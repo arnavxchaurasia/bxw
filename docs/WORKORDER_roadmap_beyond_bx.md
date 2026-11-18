@@ -94,7 +94,7 @@ If §1 shows drift (dashboard ahead of git/tests), your first commit of the sess
 | F1 | Stable semantic refs (role + accessible-name identity) | 0 Foundations | ✅ | n/a | n/a | ✅ | ✅ |
 | F2 | Durable session state model (on-disk page model) | 0 Foundations | ✅ | n/a | n/a | ✅ | ✅ |
 | C1 | Ranked retrieval / query API | 1 Context | ✅ | ✅ | ✅ | ✅ | ✅ |
-| C2 | Semantic action deltas | 1 Context | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
+| C2 | Semantic action deltas | 1 Context | ✅ | ✅ | ✅ | ✅ | ✅ |
 | C3 | Token-budgeted / progressive snapshots | 1 Context | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
 | C4 | Region memoization (stable-region caching) | 1 Context | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
 | C5 | Episodic recall (queryable session memory) | 1 Context | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
@@ -244,17 +244,18 @@ and unit-testable (pure function over node list).
 **Evidence:** commit `94bfa8a`; `go test ./internal/daemon -run 'TestC1' -count=1` -> `PASS ok bxw/internal/daemon 5.642s`; full `go test ./...` green; `go vet` clean; `GOOS=linux go build ./...` green.
 
 ## C2 — Semantic action deltas
-**Status:** ⬜ · **Why:** a one-line "what changed" beats a raw node diff by 10–100× tokens.
+**Status:** ✅ · **Why:** a one-line "what changed" beats a raw node diff by 10–100× tokens.
 **Industry practice:** delta compression; human-readable change summaries.
 **Checklist**
-- [ ] After `actOn`, derive a terse semantic summary from `ChangedNodes` ("a dialog opened: 2 buttons";
+- [x] After `actOn`, derive a terse semantic summary from `ChangedNodes` ("a dialog opened: 2 buttons";
       "cart badge 1→2"; "navigated to /checkout"). Raw diff stays on disk, fetchable via `--verbose`.
-- [ ] Extend `ActResult.TerseSummary` to emit the semantic line; keep the raw diff behind a flag/resource.
+- [x] Extend `ActResult.TerseSummary` to emit the semantic line; keep the raw diff behind a flag/resource.
 **Implementation prompt:** classify the baseline diff into a few change kinds (dialog, nav, added/removed
 region, value change, toast/notification) and render one line. Default results carry the line; full diff only
 on `--verbose` or via a `bxw://cache` blob.
 **Tests:** unit tests mapping synthetic `ChangedNodes` sets → expected summary strings (golden). **Acceptance:**
-terse line by default, full diff on demand. **Evidence:** _test run_
+terse line by default, full diff on demand.
+**Evidence:** commit `39a8859`; `go test ./internal/daemon -run 'TestC2' -v -count=1` -> `PASS ok bxw/internal/daemon 2.054s`; full `go test ./...` green; `go vet` clean; `GOOS=linux go build ./...` green.
 
 ## C3 — Token-budgeted / progressive snapshots
 **Status:** ⬜ · **Why:** cap snapshot cost; let the agent drill down only where needed.

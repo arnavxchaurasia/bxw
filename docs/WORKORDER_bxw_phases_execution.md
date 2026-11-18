@@ -59,7 +59,7 @@ also bxw's strongest trust differentiator over bx — consider pulling it forwar
 | ID | Build | Plugs in | Depends | Acceptance (the proof) |
 |----|-------|----------|---------|------------------------|
 | ✅ **C1** | `query` op: filter + **deterministic rank** the AXTree, return only matched refs + 1-line context (never the full tree) | daemon `query` · `bxw query` · MCP `query`; route snapshot `--find` through it | F2 | **DONE `fc79f60`** — golden ranker test + real headless-browser integration (`--role button --near "Total"` → checkout first); ranked & bounded |
-| **C2** | Semantic action delta: one-line "what changed" from `ChangedNodes` ("dialog opened", "cart 1→2", "navigated /checkout"); raw diff behind `--verbose`/blob | extend `ActResult.TerseSummary` | F2 | golden map of synthetic `ChangedNodes` → summary strings; terse by default, full diff on demand |
+| ✅ **C2** | Semantic action delta: one-line "what changed" from `ChangedNodes` ("dialog opened", "cart 1→2", "navigated /checkout"); raw diff behind `--verbose`/blob | extend `ActResult.TerseSummary` | F2 | **DONE `39a8859`** — golden map of synthetic `ChangedNodes` → summary strings; terse by default, full diff on demand |
 | **C3** | Token-budgeted snapshot: `--budget N` returns top-N salient nodes; elided subtrees marked `[+k more — snapshot --ref eX]` | snapshot builder · `bxw snapshot --budget` | C1 | snapshot ≤ budget, elided nodes carry hint, `--ref` drills into the elided subtree |
 | **C4** | Region memoization: hash ARIA-landmark regions into F2; re-snapshot emits "`nav` unchanged (cache `<hash>`)"; changed regions re-expand | snapshot builder + SessionModel | F2 | snapshot twice, only `main` changed → nav/footer come back as cache refs, main re-expands |
 | **C5** | Episodic recall (`bxw recall`, C1-ranked/budgeted timeline of F2 notes+history) + close-out (`bxw done` distils notes to a durable 5-line takeaway) | daemon + `bxw recall`/`bxw done` · MCP `recall` (read-only) | C1, F2 | `recall` renders bounded ranked timeline honouring `--grep`/`--since`; `done` writes compact takeaway, raw notes intact |
@@ -101,13 +101,7 @@ also bxw's strongest trust differentiator over bx — consider pulling it forwar
 
 ## Next action for the implementation model
 
-C1 is ✅ (commit `fc79f60`, CI green on ubuntu + windows, `verify-roadmap` OK). Resume per the roadmap's
-anti-drift §1 (`git log`, `go test ./...`, `scripts/verify-roadmap.sh` — reality wins over the dashboard),
-then start **C2** (WIP = 1) — semantic action deltas. Build to the Definition of Done, paste the real
-`go test` line as Evidence, commit `feat(context): C2 semantic action deltas …`, then C3 / C4.
-
-### Carry-forward from C1 verification (resolve before shipping C2)
-- **`snapshot --find` dropped role-substring matching.** C1 re-routed `--find` through the ranker, which
-  matches name/value only — the old `FilterFind` also matched **role**. So `--find button` (by role) now
-  returns nothing. Defensible (role filtering is now `query --role`), but it's a *silent* behaviour change:
-  either note it in the CHANGELOG as intended, or restore role matching in `FilterFind`.
+C1 and C2 are ✅ (C1 commit `fc79f60`, C2 commit `39a8859`, `verify-roadmap` OK, tests green).
+Carry-forward role matching in `snapshot --find` has been restored and verified.
+Resume per the roadmap's anti-drift §1 (`git log`, `go test ./...`, `scripts/verify-roadmap.sh` — reality wins over the dashboard),
+then start **C3** (WIP = 1) — token-budgeted / progressive snapshots.
