@@ -64,6 +64,12 @@ func TestFilterSubtreeAndFind(t *testing.T) {
 	if len(found) != 1 || found[0].Ref != "e3" {
 		t.Errorf("expected finding e3, got %+v", found)
 	}
+
+	// Carry-forward test: match role as well
+	foundRole := FilterFind(nodes, "footer")
+	if len(foundRole) != 1 || foundRole[0].Ref != "e4" {
+		t.Errorf("expected finding e4 by role 'footer', got %+v", foundRole)
+	}
 }
 
 func TestSnapshotPageReplacedFormatting(t *testing.T) {

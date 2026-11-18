@@ -139,13 +139,13 @@ bxw setup edge --revert
 | `bxw snapshot <tab> [flags]` | Print indented AXTree element snapshot with `e1`, `e2` refs |
 | `bxw query <tab> [flags]` | Filter and rank elements by role, name, text, and proximity |
 | `bxw screenshot <tab> [flags]` | Capture viewport PNG, saving to content-addressed cache |
-| `bxw click <tab> <ref\|sel> [--double]` | Click an element by its snapshot reference or CSS selector |
-| `bxw hover <tab> <ref\|sel>` | Hover mouse over an element |
-| `bxw drag <tab> <from> <to>` | Drag element to destination element |
-| `bxw upload <tab> <ref\|sel> <file>...` | Set files on an input[type=file] element |
-| `bxw fill <tab> <ref\|sel> <val>...` | Focus, clear, and populate text into an input or textarea |
-| `bxw type <tab> <text> [--submit <k>]` | Type characters sequentially into active element, optional submit key |
-| `bxw key <tab> <combo>` | Dispatch a keypress (e.g. `Enter`, `Tab`, `Escape`, `Control+A`) |
+| `bxw click <tab> <ref\|sel> [--double] [--verbose]` | Click element by snapshot ref or CSS selector; prints semantic delta summary (raw diff on `--verbose`) |
+| `bxw hover <tab> <ref\|sel> [--verbose]` | Hover mouse over an element; prints semantic delta summary |
+| `bxw drag <tab> <from> <to> [--verbose]` | Drag element to destination element; prints semantic delta summary |
+| `bxw upload <tab> <ref\|sel> <file>... [--verbose]` | Set files on an input[type=file] element; prints semantic delta summary |
+| `bxw fill <tab> <ref\|sel> <val>... [--verbose]` | Focus, clear, and populate text into an input or textarea; prints semantic delta |
+| `bxw type <tab> <text> [--submit <k>] [--verbose]` | Type characters sequentially into active element, optional submit key |
+| `bxw key <tab> <combo> [--verbose]` | Dispatch a keypress (e.g. `Enter`, `Tab`, `Escape`, `Control+A`) |
 | `bxw eval <tab> <expr>` | Evaluate a JavaScript expression in the tab's execution context |
 | `bxw cdp <tab> <Domain.method> [--params <json>]` | Send any raw Chrome DevTools Protocol command |
 | `bxw perms [list\|grant\|revoke]` | Inspect and manage capability permissions |

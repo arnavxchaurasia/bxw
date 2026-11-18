@@ -14,6 +14,7 @@ import (
 	"github.com/chromedp/cdproto/input"
 	"github.com/chromedp/cdproto/page"
 
+	"bxw/internal/cache"
 	"bxw/internal/config"
 	"bxw/internal/contextmgr"
 	"bxw/internal/exit"
@@ -29,9 +30,15 @@ type ActResult struct {
 	Dialog       *Dialog  `json:"dialog,omitempty"`
 	ChangedNodes int      `json:"changed_nodes,omitempty"`
 	Terse        string   `json:"terse,omitempty"`
+	Delta        string   `json:"delta,omitempty"`
+	RawDiff      string   `json:"raw_diff,omitempty"`
+	DiffBlob     string   `json:"diff_blob,omitempty"`
 }
 
 func (r ActResult) TerseSummary(action string) string {
+	if r.Delta != "" {
+		return fmt.Sprintf("%s -> %s", action, r.Delta)
+	}
 	if r.Navigated {
 		return fmt.Sprintf("%s -> navigated to %s (%s)", action, r.URL, r.Title)
 	}
@@ -112,10 +119,20 @@ func (d *Daemon) actOn(tabID string, timeout time.Duration, fn func(ctx context.
 			nodes, refs, descs := buildSnapshot(tree.Nodes)
 			sess.refs = refs
 			sess.refDescs = descs
-			_, changedCount := DiffSnapshots(base.Nodes, nodes)
+			rawDiff, changedCount := DiffSnapshots(base.Nodes, nodes)
 			r.ChangedNodes = changedCount
+			r.RawDiff = rawDiff
+			if rawDiff != "" && rawDiff != "unchanged\n" {
+				if uri, _, err := cache.Put([]byte(rawDiff), ".txt"); err == nil {
+					r.DiffBlob = uri
+				}
+			}
+			r.Delta = ClassifyDelta(base.Nodes, nodes, r.Navigated, r.URL, r.Title, r.Dialog)
 			_ = SaveTabState(d.br.Name, tabID, Snapshot{URL: r.URL, Title: r.Title, Nodes: nodes, Hash: ComputeHash(nodes)}, refs)
 		}
+	} else {
+		// Even without baseline nodes, classify navigation/dialog
+		r.Delta = ClassifyDelta(nil, nil, r.Navigated, r.URL, r.Title, r.Dialog)
 	}
 
 	if r.Navigated {

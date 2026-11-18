@@ -140,13 +140,13 @@ usage:
                                       flags: --role <r>, --name <n>, --text <t>, --near <label>, --limit <k>, --json
   bxw screenshot <tab> [flags]        capture viewport PNG, saving to cache (prints bxw://cache link)
                                       flags: --out <file>
-  bxw click <tab> <ref|sel> [--double] click an element by ref or CSS selector
-  bxw hover <tab> <ref|sel>           hover over an element by ref or CSS selector
-  bxw drag <tab> <from> <to>          drag element to destination element
-  bxw upload <tab> <ref|sel> <file>.. set files on an input[type=file] element
-  bxw fill <tab> <ref|sel> <val>...   fill form inputs, selects, or toggles
-  bxw type <tab> <text> [--submit <k>] type text into active element
-  bxw key <tab> <combo>               press key or combination (e.g. Enter, Control+A)
+  bxw click <tab> <ref|sel> [--double] [--verbose] click an element by ref or CSS selector
+  bxw hover <tab> <ref|sel> [--verbose] hover over an element by ref or CSS selector
+  bxw drag <tab> <from> <to> [--verbose] drag element to destination element
+  bxw upload <tab> <ref|sel> <file>.. [--verbose] set files on an input[type=file] element
+  bxw fill <tab> <ref|sel> <val>... [--verbose] fill form inputs, selects, or toggles
+  bxw type <tab> <text> [--submit <k>] [--verbose] type text into active element
+  bxw key <tab> <combo> [--verbose]   press key or combination (e.g. Enter, Control+A)
   bxw eval <tab> <expr>               evaluate JavaScript on the tab
   bxw cdp <tab> <Domain.method> [--params <json>]   send any DevTools command
   bxw perms [list|grant|revoke]       inspect and manage capability permissions
@@ -591,11 +591,14 @@ func runClick(args []string) error {
 	var pos []string
 	var browserName string
 	double := false
+	verbose := false
 
 	for i := 0; i < len(args); i++ {
 		switch args[i] {
 		case "--double":
 			double = true
+		case "--verbose":
+			verbose = true
 		case "--browser":
 			if i+1 < len(args) {
 				browserName = args[i+1]
@@ -611,7 +614,7 @@ func runClick(args []string) error {
 	}
 
 	if len(pos) < 2 {
-		return exit.New(exit.Usage, "usage: bxw click <tab> <element> [--double]")
+		return exit.New(exit.Usage, "usage: bxw click <tab> <element> [--double] [--verbose]")
 	}
 
 	name, err := resolveBrowser(browserName)
@@ -636,8 +639,14 @@ func runClick(args []string) error {
 		action = "double-clicked"
 	}
 	fmt.Printf("%s %s\n", action, pos[1])
-	if res.Navigated {
+	if res.Delta != "" {
+		fmt.Printf("delta: %s\n", res.Delta)
+	} else if res.Navigated {
 		fmt.Printf("navigated to %s (%s)\n", res.URL, res.Title)
+	}
+	if verbose && res.RawDiff != "" {
+		fmt.Println("--- raw diff ---")
+		fmt.Print(res.RawDiff)
 	}
 	return nil
 }
@@ -645,9 +654,12 @@ func runClick(args []string) error {
 func runHover(args []string) error {
 	var pos []string
 	var browserName string
+	verbose := false
 
 	for i := 0; i < len(args); i++ {
 		switch args[i] {
+		case "--verbose":
+			verbose = true
 		case "--browser":
 			if i+1 < len(args) {
 				browserName = args[i+1]
@@ -663,7 +675,7 @@ func runHover(args []string) error {
 	}
 
 	if len(pos) < 2 {
-		return exit.New(exit.Usage, "usage: bxw hover <tab> <ref|sel> [--browser <name>]")
+		return exit.New(exit.Usage, "usage: bxw hover <tab> <ref|sel> [--verbose] [--browser <name>]")
 	}
 
 	tab := pos[0]
@@ -685,6 +697,10 @@ func runHover(args []string) error {
 	var res daemon.ActResult
 	if err := json.Unmarshal(data, &res); err == nil {
 		fmt.Println(res.TerseSummary("hover " + el))
+		if verbose && res.RawDiff != "" {
+			fmt.Println("--- raw diff ---")
+			fmt.Print(res.RawDiff)
+		}
 		return nil
 	}
 	fmt.Printf("hover %s -> done\n", el)
@@ -694,9 +710,12 @@ func runHover(args []string) error {
 func runDrag(args []string) error {
 	var pos []string
 	var browserName string
+	verbose := false
 
 	for i := 0; i < len(args); i++ {
 		switch args[i] {
+		case "--verbose":
+			verbose = true
 		case "--browser":
 			if i+1 < len(args) {
 				browserName = args[i+1]
@@ -712,7 +731,7 @@ func runDrag(args []string) error {
 	}
 
 	if len(pos) < 3 {
-		return exit.New(exit.Usage, "usage: bxw drag <tab> <from> <to> [--browser <name>]")
+		return exit.New(exit.Usage, "usage: bxw drag <tab> <from> <to> [--verbose] [--browser <name>]")
 	}
 
 	tab := pos[0]
@@ -736,6 +755,10 @@ func runDrag(args []string) error {
 	var res daemon.ActResult
 	if err := json.Unmarshal(data, &res); err == nil {
 		fmt.Println(res.TerseSummary(fmt.Sprintf("drag %s -> %s", from, to)))
+		if verbose && res.RawDiff != "" {
+			fmt.Println("--- raw diff ---")
+			fmt.Print(res.RawDiff)
+		}
 		return nil
 	}
 	fmt.Printf("drag %s -> %s -> done\n", from, to)
@@ -745,9 +768,12 @@ func runDrag(args []string) error {
 func runUpload(args []string) error {
 	var pos []string
 	var browserName string
+	verbose := false
 
 	for i := 0; i < len(args); i++ {
 		switch args[i] {
+		case "--verbose":
+			verbose = true
 		case "--browser":
 			if i+1 < len(args) {
 				browserName = args[i+1]
@@ -763,7 +789,7 @@ func runUpload(args []string) error {
 	}
 
 	if len(pos) < 3 {
-		return exit.New(exit.Usage, "usage: bxw upload <tab> <ref|sel> <file>... [--browser <name>]")
+		return exit.New(exit.Usage, "usage: bxw upload <tab> <ref|sel> <file>... [--verbose] [--browser <name>]")
 	}
 
 	tab := pos[0]
@@ -787,6 +813,10 @@ func runUpload(args []string) error {
 	var res daemon.ActResult
 	if err := json.Unmarshal(data, &res); err == nil {
 		fmt.Println(res.TerseSummary(fmt.Sprintf("uploaded %d file(s) to %s", len(files), el)))
+		if verbose && res.RawDiff != "" {
+			fmt.Println("--- raw diff ---")
+			fmt.Print(res.RawDiff)
+		}
 		return nil
 	}
 	fmt.Printf("uploaded %d file(s) to %s\n", len(files), el)
@@ -796,9 +826,12 @@ func runUpload(args []string) error {
 func runFill(args []string) error {
 	var pos []string
 	var browserName string
+	verbose := false
 
 	for i := 0; i < len(args); i++ {
 		switch args[i] {
+		case "--verbose":
+			verbose = true
 		case "--browser":
 			if i+1 < len(args) {
 				browserName = args[i+1]
@@ -814,7 +847,7 @@ func runFill(args []string) error {
 	}
 
 	if len(pos) < 3 || len(pos)%2 != 1 {
-		return exit.New(exit.Usage, "usage: bxw fill <tab> <element> <value> [<element> <value> ...]")
+		return exit.New(exit.Usage, "usage: bxw fill <tab> <element> <value> [<element> <value> ...] [--verbose]")
 	}
 
 	tab := pos[0]
@@ -841,8 +874,14 @@ func runFill(args []string) error {
 	_ = json.Unmarshal(data, &res)
 
 	fmt.Printf("filled %d field(s)\n", len(pairs))
-	if res.Navigated {
+	if res.Delta != "" {
+		fmt.Printf("delta: %s\n", res.Delta)
+	} else if res.Navigated {
 		fmt.Printf("navigated to %s (%s)\n", res.URL, res.Title)
+	}
+	if verbose && res.RawDiff != "" {
+		fmt.Println("--- raw diff ---")
+		fmt.Print(res.RawDiff)
 	}
 	return nil
 }
@@ -850,9 +889,12 @@ func runFill(args []string) error {
 func runType(args []string) error {
 	var pos []string
 	var browserName, submit string
+	verbose := false
 
 	for i := 0; i < len(args); i++ {
 		switch args[i] {
+		case "--verbose":
+			verbose = true
 		case "--browser":
 			if i+1 < len(args) {
 				browserName = args[i+1]
@@ -875,7 +917,7 @@ func runType(args []string) error {
 	}
 
 	if len(pos) < 2 {
-		return exit.New(exit.Usage, "usage: bxw type <tab> <text> [--submit <key>]")
+		return exit.New(exit.Usage, "usage: bxw type <tab> <text> [--submit <key>] [--verbose]")
 	}
 
 	name, err := resolveBrowser(browserName)
@@ -896,8 +938,14 @@ func runType(args []string) error {
 	_ = json.Unmarshal(data, &res)
 
 	fmt.Printf("typed %q\n", pos[1])
-	if res.Navigated {
+	if res.Delta != "" {
+		fmt.Printf("delta: %s\n", res.Delta)
+	} else if res.Navigated {
 		fmt.Printf("navigated to %s (%s)\n", res.URL, res.Title)
+	}
+	if verbose && res.RawDiff != "" {
+		fmt.Println("--- raw diff ---")
+		fmt.Print(res.RawDiff)
 	}
 	return nil
 }
@@ -905,9 +953,12 @@ func runType(args []string) error {
 func runKey(args []string) error {
 	var pos []string
 	var browserName string
+	verbose := false
 
 	for i := 0; i < len(args); i++ {
 		switch args[i] {
+		case "--verbose":
+			verbose = true
 		case "--browser":
 			if i+1 < len(args) {
 				browserName = args[i+1]
@@ -923,7 +974,7 @@ func runKey(args []string) error {
 	}
 
 	if len(pos) < 2 {
-		return exit.New(exit.Usage, "usage: bxw key <tab> <key> (such as Enter, Tab, Control+A)")
+		return exit.New(exit.Usage, "usage: bxw key <tab> <key> [--verbose] (such as Enter, Tab, Control+A)")
 	}
 
 	name, err := resolveBrowser(browserName)
@@ -943,8 +994,14 @@ func runKey(args []string) error {
 	_ = json.Unmarshal(data, &res)
 
 	fmt.Printf("pressed %s\n", pos[1])
-	if res.Navigated {
+	if res.Delta != "" {
+		fmt.Printf("delta: %s\n", res.Delta)
+	} else if res.Navigated {
 		fmt.Printf("navigated to %s (%s)\n", res.URL, res.Title)
+	}
+	if verbose && res.RawDiff != "" {
+		fmt.Println("--- raw diff ---")
+		fmt.Print(res.RawDiff)
 	}
 	return nil
 }

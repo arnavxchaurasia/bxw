@@ -94,8 +94,8 @@ func RankNodes(nodes []SnapNode, params QueryParams) QueryResult {
 			continue
 		}
 
-		// Filter by text if specified
-		if textQ != "" && !strings.Contains(nameL, textQ) && !strings.Contains(valL, textQ) {
+		// Filter by text if specified (matches name, value, or role)
+		if textQ != "" && !strings.Contains(nameL, textQ) && !strings.Contains(valL, textQ) && !strings.Contains(roleL, textQ) {
 			continue
 		}
 
@@ -133,6 +133,11 @@ func RankNodes(nodes []SnapNode, params QueryParams) QueryResult {
 				score += 40000
 			} else if strings.Contains(valL, textQ) {
 				score += 20000
+			}
+			if roleL == textQ {
+				score += 30000
+			} else if strings.Contains(roleL, textQ) {
+				score += 15000
 			}
 		}
 

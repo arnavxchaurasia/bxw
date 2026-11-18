@@ -8,11 +8,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **C2: Semantic action deltas.** `actOn` now classifies baseline node diffs
+  into concise 1-line semantic change summaries ("dialog opened: Confirm (2 buttons)",
+  "cart badge 1→2", "notification: ...", "navigated to ...", "+3 elements").
+  Emitted by default in `ActResult.TerseSummary`, with raw diff cached to content-addressed
+  blob storage (`bxw://cache/...`) and viewable via `--verbose` across mutating verbs
+  (`click`, `fill`, `type`, `key`, `hover`, `drag`, `upload`).
 - **C1: Ranked retrieval / query API (`bxw query`).** Filter and deterministically
   rank accessibility elements by ARIA role, accessible name, text, and proximity
   to another label (`--near`), returning bounded refs with 1-line context to cut
-  token use. Promoted `snapshot --find` to use the same ranking model. Added
-  `query` CLI verb and `query` MCP tool.
+  token use. Promoted `snapshot --find` to use the same ranking model (including role matching).
+  Added `query` CLI verb and `query` MCP tool.
 
 ## [0.1.0] - 2026-11-15
 
