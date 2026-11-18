@@ -5,7 +5,9 @@
 live in [`WORKORDER_roadmap_beyond_bx.md`](WORKORDER_roadmap_beyond_bx.md); **this file is the order to build
 them in and the dependencies between them.** Do not re-spec here — follow the roadmap section each item links to.
 
-**Done already (Phase 0 — do not rebuild):** F1 stable semantic refs ✅, F2 durable session state model ✅.
+**Done already (do not rebuild):** F1 stable semantic refs ✅, F2 durable session state model ✅ (Phase 0).
+**C1 ranked retrieval / query API ✅** (Phase 1 #1) — commit `fc79f60`, verified: CI green (ubuntu + windows),
+`verify-roadmap` OK, real headless-browser integration test. **Next up: C2.**
 
 ## Rules (same as the roadmap — enforced)
 
@@ -37,7 +39,7 @@ also bxw's strongest trust differentiator over bx — consider pulling it forwar
 
 ## Recommended build order (critical path)
 
-1. **C1** — ranked retrieval (unlocks C3, C5, and the snapshot ranker)
+1. ✅ **C1** — ranked retrieval — **DONE** (`fc79f60`, CI green, verify-roadmap OK)
 2. **C2 · C3 · C4** — context/token-efficiency (C3 needs C1; C4 needs F2 ✅; parallelizable after C1)
 3. **C5** — episodic recall + close-out (needs C1)
 4. **R1** — smart wait conditions (needed by X1)
@@ -56,7 +58,7 @@ also bxw's strongest trust differentiator over bx — consider pulling it forwar
 
 | ID | Build | Plugs in | Depends | Acceptance (the proof) |
 |----|-------|----------|---------|------------------------|
-| **C1** | `query` op: filter + **deterministic rank** the AXTree, return only matched refs + 1-line context (never the full tree) | daemon `query` · `bxw query` · MCP `query`; route snapshot `--find` through it | F2 | golden ranker test + `--role button --near "Total"` returns checkout button first; result ranked & bounded |
+| ✅ **C1** | `query` op: filter + **deterministic rank** the AXTree, return only matched refs + 1-line context (never the full tree) | daemon `query` · `bxw query` · MCP `query`; route snapshot `--find` through it | F2 | **DONE `fc79f60`** — golden ranker test + real headless-browser integration (`--role button --near "Total"` → checkout first); ranked & bounded |
 | **C2** | Semantic action delta: one-line "what changed" from `ChangedNodes` ("dialog opened", "cart 1→2", "navigated /checkout"); raw diff behind `--verbose`/blob | extend `ActResult.TerseSummary` | F2 | golden map of synthetic `ChangedNodes` → summary strings; terse by default, full diff on demand |
 | **C3** | Token-budgeted snapshot: `--budget N` returns top-N salient nodes; elided subtrees marked `[+k more — snapshot --ref eX]` | snapshot builder · `bxw snapshot --budget` | C1 | snapshot ≤ budget, elided nodes carry hint, `--ref` drills into the elided subtree |
 | **C4** | Region memoization: hash ARIA-landmark regions into F2; re-snapshot emits "`nav` unchanged (cache `<hash>`)"; changed regions re-expand | snapshot builder + SessionModel | F2 | snapshot twice, only `main` changed → nav/footer come back as cache refs, main re-expands |
@@ -97,8 +99,15 @@ also bxw's strongest trust differentiator over bx — consider pulling it forwar
 
 ---
 
-## First action for the implementation model
+## Next action for the implementation model
 
-Resume per the roadmap's anti-drift §1 (`git log`, `go test ./...`, `scripts/verify-roadmap.sh` — reality wins
-over the dashboard), reconcile the dashboard, then start **C1** (WIP = 1). Build it to the Definition of Done,
-paste the real `go test` line as Evidence, commit `feat(context): C1 ranked retrieval …`, then move to C2.
+C1 is ✅ (commit `fc79f60`, CI green on ubuntu + windows, `verify-roadmap` OK). Resume per the roadmap's
+anti-drift §1 (`git log`, `go test ./...`, `scripts/verify-roadmap.sh` — reality wins over the dashboard),
+then start **C2** (WIP = 1) — semantic action deltas. Build to the Definition of Done, paste the real
+`go test` line as Evidence, commit `feat(context): C2 semantic action deltas …`, then C3 / C4.
+
+### Carry-forward from C1 verification (resolve before shipping C2)
+- **`snapshot --find` dropped role-substring matching.** C1 re-routed `--find` through the ranker, which
+  matches name/value only — the old `FilterFind` also matched **role**. So `--find button` (by role) now
+  returns nothing. Defensible (role filtering is now `query --role`), but it's a *silent* behaviour change:
+  either note it in the CHANGELOG as intended, or restore role matching in `FilterFind`.
