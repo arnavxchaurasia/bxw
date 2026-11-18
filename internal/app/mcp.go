@@ -587,6 +587,56 @@ func mcpTools() []mcpTool {
 			},
 		},
 		{
+			Name:        "query",
+			Description: "Filter and rank elements on a page by role, accessible name, text, and proximity to another label. Returns ranked refs with 1-line context to save tokens.",
+			InputSchema: map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"tab":     str("Tab ID from list_tabs or open."),
+					"browser": str("Browser name."),
+					"role":    str("Optional ARIA role to filter (e.g. 'button', 'textbox', 'link')."),
+					"name":    str("Optional accessible name to match (exact or substring)."),
+					"text":    str("Optional text to match in name or value."),
+					"near":    str("Optional label or text of a nearby element to bias ranking by proximity."),
+					"limit":   number("Maximum number of results to return (default 10)."),
+				},
+				"required": []string{"tab"},
+			},
+			run: func(args map[string]any) (string, error) {
+				bName, err := resolveBrowser(argString(args, "browser"))
+				if err != nil {
+					return "", err
+				}
+				callArgs := map[string]any{
+					"tab": argString(args, "tab"),
+				}
+				if r := argString(args, "role"); r != "" {
+					callArgs["role"] = r
+				}
+				if n := argString(args, "name"); n != "" {
+					callArgs["name"] = n
+				}
+				if t := argString(args, "text"); t != "" {
+					callArgs["text"] = t
+				}
+				if nr := argString(args, "near"); nr != "" {
+					callArgs["near"] = nr
+				}
+				if l, ok := args["limit"].(float64); ok && l > 0 {
+					callArgs["limit"] = int(l)
+				}
+				data, err := daemon.Call(bName, "query", callArgs)
+				if err != nil {
+					return "", err
+				}
+				var res daemon.QueryResult
+				if err := json.Unmarshal(data, &res); err != nil {
+					return string(data), nil
+				}
+				return res.Text(), nil
+			},
+		},
+		{
 			Name:        "screenshot",
 			Description: "Capture page viewport as PNG, saving to content-addressed cache and returning a bxw://cache/<hash>.png resource URI.",
 			InputSchema: map[string]any{

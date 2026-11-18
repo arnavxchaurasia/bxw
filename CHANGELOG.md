@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **C1: Ranked retrieval / query API (`bxw query`).** Filter and deterministically
+  rank accessibility elements by ARIA role, accessible name, text, and proximity
+  to another label (`--near`), returning bounded refs with 1-line context to cut
+  token use. Promoted `snapshot --find` to use the same ranking model. Added
+  `query` CLI verb and `query` MCP tool.
+
 ## [0.1.0] - 2026-11-15
 
 First public release. Windows-native, clean-room Go. Drives Chromium browsers

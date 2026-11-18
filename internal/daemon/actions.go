@@ -219,6 +219,38 @@ func (d *Daemon) snapshot(tabID string, full bool, scopeRef, findQuery string, t
 	return snap, nil
 }
 
+func (d *Daemon) query(tabID string, params QueryParams, timeout time.Duration) (QueryResult, error) {
+	sess, err := d.tabSession(tabID)
+	if err != nil {
+		return QueryResult{}, err
+	}
+	sess.mu.Lock()
+	defer sess.mu.Unlock()
+
+	if err := sess.errIfDialog(); err != nil {
+		return QueryResult{}, err
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	tree, err := cdp.Call(ctx, sess.conn, accessibility.GetFullAXTree, accessibility.GetFullAXTreeParams{})
+	if err != nil {
+		return QueryResult{}, exit.New(exit.Upstream, "accessibility getFullAXTree: %v", err)
+	}
+
+	nodes, refs, descs := buildSnapshot(tree.Nodes)
+	sess.refs = refs
+	sess.refDescs = descs
+	sess.refLoader = sess.loaderID(ctx)
+
+	url, title := sess.location(ctx)
+	res := RankNodes(nodes, params)
+	res.URL = url
+	res.Title = title
+	return res, nil
+}
+
 func center(ctx context.Context, sess *tabSession, el string, timeout time.Duration) (float64, float64, error) {
 	sel, err := sess.selector(ctx, el)
 	if err != nil {

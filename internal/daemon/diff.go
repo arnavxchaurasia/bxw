@@ -17,12 +17,12 @@ import (
 
 // TabState represents the persisted snapshot baseline and ref map stored on disk.
 type TabState struct {
-	URL       string                          `json:"url"`
-	Title     string                          `json:"title"`
-	Hash      string                          `json:"hash"`
-	Timestamp time.Time                       `json:"timestamp"`
-	Nodes     []SnapNode                      `json:"nodes"`
-	RefMap    map[string]cdp.BackendNodeID    `json:"ref_map"`
+	URL       string                       `json:"url"`
+	Title     string                       `json:"title"`
+	Hash      string                       `json:"hash"`
+	Timestamp time.Time                    `json:"timestamp"`
+	Nodes     []SnapNode                   `json:"nodes"`
+	RefMap    map[string]cdp.BackendNodeID `json:"ref_map"`
 }
 
 // ComputeHash computes a deterministic SHA-256 hash of a node slice.
@@ -178,20 +178,25 @@ func FilterSubtree(nodes []SnapNode, targetRef string) []SnapNode {
 	return out
 }
 
-// FilterFind extracts only nodes matching query text.
+// FilterFind extracts and deterministically ranks nodes matching query text using the C1 ranker.
 func FilterFind(nodes []SnapNode, query string) []SnapNode {
-	q := strings.ToLower(strings.TrimSpace(query))
+	q := strings.TrimSpace(query)
 	if q == "" {
 		return nodes
 	}
-	var out []SnapNode
+	res := RankNodes(nodes, QueryParams{
+		Text:  q,
+		Limit: len(nodes),
+	})
+	nodeMap := make(map[string]SnapNode, len(nodes))
 	for _, n := range nodes {
-		if strings.Contains(strings.ToLower(n.Name), q) ||
-			strings.Contains(strings.ToLower(n.Value), q) ||
-			strings.Contains(strings.ToLower(n.Role), q) {
+		nodeMap[n.Ref] = n
+	}
+	out := make([]SnapNode, 0, len(res.Items))
+	for _, it := range res.Items {
+		if n, ok := nodeMap[it.Ref]; ok {
 			out = append(out, n)
 		}
 	}
 	return out
 }
-

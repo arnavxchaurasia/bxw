@@ -137,6 +137,7 @@ bxw setup edge --revert
 | `bxw performance <tab>` | Audit Core Web Vitals (LCP, FCP, CLS, TTFB, DOM size, heap) |
 | `bxw emulate <tab> [flags]` | Emulate mobile/desktop, network throttling, CPU, geolocation, color scheme |
 | `bxw snapshot <tab> [flags]` | Print indented AXTree element snapshot with `e1`, `e2` refs |
+| `bxw query <tab> [flags]` | Filter and rank elements by role, name, text, and proximity |
 | `bxw screenshot <tab> [flags]` | Capture viewport PNG, saving to content-addressed cache |
 | `bxw click <tab> <ref\|sel> [--double]` | Click an element by its snapshot reference or CSS selector |
 | `bxw hover <tab> <ref\|sel>` | Hover mouse over an element |
@@ -163,7 +164,7 @@ bxw setup edge --revert
 `bxw` includes a zero-dependency, JSON-RPC 2.0 stdio MCP server exposing full tool-for-tool parity with `@facets-cloud/bx` v0.4.1 (28 tools):
 
 - **Setup**: `doctor`, `list_browsers`, `setup`, `launch`
-- **Read**: `list_profiles`, `list_tabs`, `snapshot`, `read`, `screenshot`, `eval`, `wait`
+- **Read**: `list_profiles`, `list_tabs`, `snapshot`, `query`, `read`, `screenshot`, `eval`, `wait`
 - **Act**: `open`, `goto`, `click`, `hover`, `drag`, `fill`, `type`, `key`, `upload`, `dialog`, `close_tab`
 - **Debug**: `console`, `network`, `storage`, `performance`, `emulate`, `cdp`
 

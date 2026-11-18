@@ -42,6 +42,8 @@ func Run(args []string) error {
 		return runLogin(args[1:])
 	case "snapshot":
 		return runSnapshot(args[1:])
+	case "query":
+		return runQuery(args[1:])
 	case "screenshot":
 		return runScreenshot(args[1:])
 	case "click":
@@ -134,6 +136,8 @@ usage:
   bxw mcp [install [client]]          speak MCP over stdio or install into AI clients
   bxw snapshot <tab> [flags]          accessibility snapshot with stable element refs (e1, e2...)
                                       flags: --full, --ref <ref>, --find <text>, --out <file>
+  bxw query <tab> [flags]             filter and rank elements by role, name, text, proximity
+                                      flags: --role <r>, --name <n>, --text <t>, --near <label>, --limit <k>, --json
   bxw screenshot <tab> [flags]        capture viewport PNG, saving to cache (prints bxw://cache link)
                                       flags: --out <file>
   bxw click <tab> <ref|sel> [--double] click an element by ref or CSS selector
@@ -425,6 +429,102 @@ func runSnapshot(args []string) error {
 	}
 
 	fmt.Print(text)
+	return nil
+}
+
+func runQuery(args []string) error {
+	var pos []string
+	var browserName, role, name, text, near string
+	var limit int
+	var jsonOutput bool
+
+	for i := 0; i < len(args); i++ {
+		switch args[i] {
+		case "--browser":
+			if i+1 < len(args) {
+				browserName = args[i+1]
+				i++
+			}
+		case "--role":
+			if i+1 < len(args) {
+				role = args[i+1]
+				i++
+			}
+		case "--name":
+			if i+1 < len(args) {
+				name = args[i+1]
+				i++
+			}
+		case "--text":
+			if i+1 < len(args) {
+				text = args[i+1]
+				i++
+			}
+		case "--near":
+			if i+1 < len(args) {
+				near = args[i+1]
+				i++
+			}
+		case "--limit":
+			if i+1 < len(args) {
+				fmt.Sscanf(args[i+1], "%d", &limit)
+				i++
+			}
+		case "--json":
+			jsonOutput = true
+		default:
+			if !strings.HasPrefix(args[i], "-") {
+				pos = append(pos, args[i])
+			}
+		}
+	}
+
+	tab := ""
+	if len(pos) >= 1 {
+		tab = pos[0]
+	}
+
+	bName, err := resolveBrowser(browserName)
+	if err != nil {
+		return err
+	}
+
+	callArgs := map[string]any{
+		"tab": tab,
+	}
+	if role != "" {
+		callArgs["role"] = role
+	}
+	if name != "" {
+		callArgs["name"] = name
+	}
+	if text != "" {
+		callArgs["text"] = text
+	}
+	if near != "" {
+		callArgs["near"] = near
+	}
+	if limit > 0 {
+		callArgs["limit"] = limit
+	}
+
+	data, err := daemon.Call(bName, "query", callArgs)
+	if err != nil {
+		return err
+	}
+
+	var res daemon.QueryResult
+	if err := json.Unmarshal(data, &res); err != nil {
+		return exit.New(exit.Internal, "decode query result: %v", err)
+	}
+
+	if jsonOutput {
+		enc := json.NewEncoder(os.Stdout)
+		enc.SetIndent("", "  ")
+		return enc.Encode(res)
+	}
+
+	fmt.Print(res.Text())
 	return nil
 }
 

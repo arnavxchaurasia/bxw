@@ -357,6 +357,31 @@ func (d *Daemon) dispatch(req Request) Response {
 		data, _ := json.Marshal(snap)
 		return Response{Data: data}
 
+	case "query":
+		tab, _ := req.Args["tab"].(string)
+		role, _ := req.Args["role"].(string)
+		name, _ := req.Args["name"].(string)
+		text, _ := req.Args["text"].(string)
+		near, _ := req.Args["near"].(string)
+		limit := 0
+		if l, ok := req.Args["limit"].(float64); ok {
+			limit = int(l)
+		} else if l, ok := req.Args["limit"].(int); ok {
+			limit = l
+		}
+		res, err := d.query(tab, QueryParams{
+			Role:  role,
+			Name:  name,
+			Text:  text,
+			Near:  near,
+			Limit: limit,
+		}, timeout)
+		if err != nil {
+			return errorResponse(err)
+		}
+		data, _ := json.Marshal(res)
+		return Response{Data: data}
+
 	case "click":
 		tab, _ := req.Args["tab"].(string)
 		sel, _ := req.Args["selector"].(string)

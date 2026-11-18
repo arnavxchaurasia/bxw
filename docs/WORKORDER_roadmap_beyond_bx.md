@@ -93,7 +93,7 @@ If §1 shows drift (dashboard ahead of git/tests), your first commit of the sess
 |---|---|---|---|---|---|---|---|
 | F1 | Stable semantic refs (role + accessible-name identity) | 0 Foundations | ✅ | n/a | n/a | ✅ | ✅ |
 | F2 | Durable session state model (on-disk page model) | 0 Foundations | ✅ | n/a | n/a | ✅ | ✅ |
-| C1 | Ranked retrieval / query API | 1 Context | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
+| C1 | Ranked retrieval / query API | 1 Context | ✅ | ✅ | ✅ | ✅ | ✅ |
 | C2 | Semantic action deltas | 1 Context | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
 | C3 | Token-budgeted / progressive snapshots | 1 Context | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
 | C4 | Region memoization (stable-region caching) | 1 Context | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
@@ -229,18 +229,19 @@ overwrite), reload from disk, assert round-trip; a "correction" adds a 3rd note 
 # ════════ PHASE 1 — CONTEXT & TOKEN EFFICIENCY (the moat) ════════
 
 ## C1 — Ranked retrieval / query API
-**Status:** ⬜ · **Why:** most turns need 3 elements, not 300. Return *relevant* refs, not the whole AXTree.
+**Status:** ✅ (Opus, 2026-11-18) · **Why:** most turns need 3 elements, not 300. Return *relevant* refs, not the whole AXTree.
 **Industry practice:** RAG retrieval; Playwright locator ranking (role/name/text/test-id).
 **Checklist**
-- [ ] `bxw query <tab> [--role r] [--name n] [--text t] [--near "label"] [--limit k]` → ranked refs + minimal context.
-- [ ] Ranking: exact role+name > name contains > text match > proximity to `--near`. Deterministic ordering.
-- [ ] MCP tool `query`; promote the existing snapshot `--find` to call the same ranker.
+- [x] `bxw query <tab> [--role r] [--name n] [--text t] [--near "label"] [--limit k]` → ranked refs + minimal context.
+- [x] Ranking: exact role+name > name contains > text match > proximity to `--near`. Deterministic ordering.
+- [x] MCP tool `query`; promote the existing snapshot `--find` to call the same ranker.
 **Implementation prompt:** add a `query` daemon op over the current snapshot/AXTree that filters + ranks and
 returns only matched nodes (ref, role, name, 1-line context), never the full tree. Make ranking deterministic
 and unit-testable (pure function over node list).
-**Tests:** golden test of the ranker over a fixed node list; integration against a `data:` form asserting
-`--role button --near "Total"` returns the checkout button first. **Acceptance:** ranked, bounded result.
-**Evidence:** _test run_
+**Tests:** golden test of the ranker over a fixed node list (`TestC1RankedRetrieval`); integration against a
+`data:` form asserting `--role button --near "Total"` returns the checkout button first (`TestC1QueryIntegration`).
+**Acceptance:** ranked, bounded result.
+**Evidence:** commit `94bfa8a`; `go test ./internal/daemon -run 'TestC1' -count=1` -> `PASS ok bxw/internal/daemon 5.642s`; full `go test ./...` green; `go vet` clean; `GOOS=linux go build ./...` green.
 
 ## C2 — Semantic action deltas
 **Status:** ⬜ · **Why:** a one-line "what changed" beats a raw node diff by 10–100× tokens.
