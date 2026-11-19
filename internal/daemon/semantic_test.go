@@ -33,9 +33,9 @@ func TestC2SemanticActionDeltas(t *testing.T) {
 			wantExact: `dialog opened: confirm ("Are you sure?")`,
 		},
 		{
-			name:     "PageUnchanged",
-			baseline: []SnapNode{{Ref: "e1", Role: "button", Name: "Click"}},
-			current:  []SnapNode{{Ref: "e1", Role: "button", Name: "Click"}},
+			name:      "PageUnchanged",
+			baseline:  []SnapNode{{Ref: "e1", Role: "button", Name: "Click"}},
+			current:   []SnapNode{{Ref: "e1", Role: "button", Name: "Click"}},
 			wantExact: "page unchanged",
 		},
 		{
