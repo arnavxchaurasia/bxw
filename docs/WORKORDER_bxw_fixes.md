@@ -6,9 +6,9 @@ covers those). Do them in order: **A → B → C** (B would fail CI until A land
 
 | ID | Fix | Severity | Status |
 |----|-----|----------|--------|
-| A | gofmt the 16 committed files that aren't formatted | trivial/hygiene | ☐ |
-| B | Add a gofmt gate to CI so it can never regress | low (prevents recurrence) | ☐ |
-| C | Fix the agent-browser launch port race ("CDP did not come up") | **real reliability bug** | ☐ |
+| A | gofmt the 16 committed files that aren't formatted | trivial/hygiene | ✅ |
+| B | Add a gofmt gate to CI so it can never regress | low (prevents recurrence) | ✅ |
+| C | Fix the agent-browser launch port race ("CDP did not come up") | **real reliability bug** | ✅ |
 
 > Already done (do not redo): `semantic_test.go` alignment fixed in `5bbfc08`. The C1 `--find` role-match
 > carry-forward was resolved in `39a8859`.
