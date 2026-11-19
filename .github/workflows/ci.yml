@@ -29,6 +29,12 @@ jobs:
       - name: Go Vet
         run: go vet ./...
 
+      - name: gofmt
+        if: runner.os == 'Linux'
+        run: |
+          unformatted=$(gofmt -l .)
+          if [ -n "$unformatted" ]; then echo "gofmt needed on:"; echo "$unformatted"; exit 1; fi
+
       - name: Run Tests
         run: go test -v ./...
 
