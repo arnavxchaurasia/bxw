@@ -66,6 +66,7 @@ func runLiveActionsOnBrowser(t *testing.T, targetBrowser browser.Browser) {
 		if d.agentPID != 0 {
 			if proc, err := os.FindProcess(d.agentPID); err == nil {
 				_ = proc.Kill()
+				_, _ = proc.Wait()
 			}
 		}
 	}()

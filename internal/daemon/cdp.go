@@ -17,15 +17,11 @@ import (
 )
 
 // launch starts an isolated or persistent profile browser instance with remote
-// debugging on a free fixed port. This is the browser-independent path (Pillar A):
-// it uses a dedicated persistent profile under %LOCALAPPDATA%\bxw\profiles\<browser>
-// so the user signs in once and credentials persist across sessions.
+// debugging. It uses --remote-debugging-port=0 to let Chromium atomically allocate
+// and bind a free port, reading the assigned port from DevToolsActivePort to avoid
+// port-binding race conditions (Pillar A).
 func (d *Daemon) launch(headless bool, targetURL string, realProfile bool) error {
 	p := osport.Current()
-	port, err := freePort()
-	if err != nil {
-		return err
-	}
 	if targetURL == "" {
 		targetURL = "about:blank"
 	}
@@ -54,8 +50,12 @@ func (d *Daemon) launch(headless bool, targetURL string, realProfile bool) error
 		return nil
 	}
 
+	// Remove stale DevToolsActivePort before spawning so we don't read an old port.
+	devToolsPortPath := filepath.Join(profileDir, "DevToolsActivePort")
+	_ = os.Remove(devToolsPortPath)
+
 	args := []string{
-		fmt.Sprintf("--remote-debugging-port=%d", port),
+		"--remote-debugging-port=0",
 		"--user-data-dir=" + profileDir,
 		"--no-first-run",
 		"--no-default-browser-check",
@@ -69,6 +69,12 @@ func (d *Daemon) launch(headless bool, targetURL string, realProfile bool) error
 	if err != nil {
 		return err
 	}
+
+	port, err := pollDevToolsActivePort(devToolsPortPath, 15*time.Second)
+	if err != nil {
+		return err
+	}
+
 	if err := waitCDP(port, 30*time.Second); err != nil {
 		return err
 	}
@@ -216,6 +222,31 @@ func cdpFromProfile(profileDir string) (int, bool) {
 		return 0, false
 	}
 	return port, true
+}
+
+// pollDevToolsActivePort polls for DevToolsActivePort to be written by Chromium
+// and returns the parsed TCP port.
+func pollDevToolsActivePort(filePath string, timeout time.Duration) (int, error) {
+	deadline := time.Now().Add(timeout)
+	delay := 50 * time.Millisecond
+	for time.Now().Before(deadline) {
+		data, err := os.ReadFile(filePath)
+		if err == nil && len(data) > 0 {
+			line := strings.TrimSpace(string(data))
+			if i := strings.IndexByte(line, '\n'); i >= 0 {
+				line = strings.TrimSpace(line[:i])
+			}
+			port, err := strconv.Atoi(line)
+			if err == nil && port > 0 {
+				return port, nil
+			}
+		}
+		time.Sleep(delay)
+		if delay < 200*time.Millisecond {
+			delay = delay * 3 / 2
+		}
+	}
+	return 0, fmt.Errorf("DevToolsActivePort not created within %v at %s", timeout, filePath)
 }
 
 func portFile(p osport.Platform, browser string) string {

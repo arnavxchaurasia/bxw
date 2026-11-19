@@ -186,6 +186,7 @@ func TestC1QueryIntegration(t *testing.T) {
 		if d.agentPID != 0 {
 			if proc, err := os.FindProcess(d.agentPID); err == nil {
 				_ = proc.Kill()
+				_, _ = proc.Wait()
 			}
 		}
 	}()
