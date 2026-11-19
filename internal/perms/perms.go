@@ -253,4 +253,3 @@ func (s *Store) saveDurable(rec PermissionRecord) error {
 	}
 	return s.writeDurable(records)
 }
-

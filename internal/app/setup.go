@@ -136,4 +136,3 @@ func inspectDoctor(browserFilter string) (string, error) {
 	}
 	return buf.String(), nil
 }
-

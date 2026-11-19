@@ -161,4 +161,3 @@ func Clean(browser string, retentionDays int) (int, error) {
 
 	return removed, nil
 }
-

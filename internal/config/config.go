@@ -136,4 +136,3 @@ func IsFollowEnabled() bool {
 	}
 	return Load().Follow
 }
-

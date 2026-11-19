@@ -97,4 +97,3 @@ func (d *Daemon) wait(tabID string, cond waitCond, timeout time.Duration) (map[s
 		}
 	}
 }
-

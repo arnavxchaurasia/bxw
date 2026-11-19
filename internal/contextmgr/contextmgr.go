@@ -274,4 +274,3 @@ func (sc SessionModel) Summary() string {
 	}
 	return strings.TrimSpace(sb.String())
 }
-

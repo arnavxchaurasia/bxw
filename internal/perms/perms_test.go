@@ -62,4 +62,3 @@ func TestPermissionsLifecycle(t *testing.T) {
 		t.Errorf("expected zero ExpiresAt for always grant, got %v", found.ExpiresAt)
 	}
 }
-

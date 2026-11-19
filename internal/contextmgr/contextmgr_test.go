@@ -105,4 +105,3 @@ func TestF2DurableSessionStateModel(t *testing.T) {
 		t.Fatalf("earlier notes lost after correction:\n%s", notesAfter)
 	}
 }
-

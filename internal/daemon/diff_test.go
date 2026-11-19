@@ -197,4 +197,3 @@ func TestSnapshotWholesaleDiffThreshold(t *testing.T) {
 		t.Errorf("expected [page replaced — full snapshot] prefix, got: %s", majorSnap.Text())
 	}
 }
-

@@ -33,4 +33,3 @@ func TestCachePutAndGet(t *testing.T) {
 		t.Errorf("EvictLRU failed: %v", err)
 	}
 }
-
