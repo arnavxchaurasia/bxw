@@ -111,7 +111,7 @@ func runLiveActionsOnBrowser(t *testing.T, targetBrowser browser.Browser) {
 	}
 
 	// 3. Take snapshot
-	snap, err := d.snapshot(tabID, true, "", "", 15*time.Second)
+	snap, err := d.snapshot(tabID, true, "", "", 0, 15*time.Second)
 	if err != nil {
 		t.Fatalf("snapshot: %v", err)
 	}

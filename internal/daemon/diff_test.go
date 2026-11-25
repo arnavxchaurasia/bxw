@@ -147,7 +147,7 @@ func TestSnapshotWholesaleDiffThreshold(t *testing.T) {
 	}
 
 	// 1. Initial snapshot to establish baseline
-	baseSnap, err := d.snapshot(tabID, true, "", "", 10*time.Second)
+	baseSnap, err := d.snapshot(tabID, true, "", "", 0, 10*time.Second)
 	if err != nil {
 		t.Fatalf("baseline snapshot: %v", err)
 	}
@@ -167,7 +167,7 @@ func TestSnapshotWholesaleDiffThreshold(t *testing.T) {
 		t.Fatalf("eval minor mutation: %v", err)
 	}
 
-	minorSnap, err := d.snapshot(tabID, false, "", "", 10*time.Second)
+	minorSnap, err := d.snapshot(tabID, false, "", "", 0, 10*time.Second)
 	if err != nil {
 		t.Fatalf("minor mutation snapshot: %v", err)
 	}
@@ -184,7 +184,7 @@ func TestSnapshotWholesaleDiffThreshold(t *testing.T) {
 		t.Fatalf("eval wholesale mutation: %v", err)
 	}
 
-	majorSnap, err := d.snapshot(tabID, false, "", "", 10*time.Second)
+	majorSnap, err := d.snapshot(tabID, false, "", "", 0, 10*time.Second)
 	if err != nil {
 		t.Fatalf("wholesale mutation snapshot: %v", err)
 	}

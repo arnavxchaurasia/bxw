@@ -45,13 +45,14 @@ func findRefByDescriptor(nodes []SnapNode, want RefDescriptor) (string, bool) {
 
 // Snapshot is the formatted accessibility snapshot of a tab.
 type Snapshot struct {
-	URL          string     `json:"url"`
-	Title        string     `json:"title"`
-	Nodes        []SnapNode `json:"nodes"`
-	Hash         string     `json:"hash,omitempty"`
-	Diff         string     `json:"diff,omitempty"`
-	Unchanged    bool       `json:"unchanged,omitempty"`
-	PageReplaced bool       `json:"page_replaced,omitempty"`
+	URL          string         `json:"url"`
+	Title        string         `json:"title"`
+	Nodes        []SnapNode     `json:"nodes"`
+	Hash         string         `json:"hash,omitempty"`
+	Diff         string         `json:"diff,omitempty"`
+	Unchanged    bool           `json:"unchanged,omitempty"`
+	PageReplaced bool           `json:"page_replaced,omitempty"`
+	Elided       map[string]int `json:"elided,omitempty"`
 }
 
 var skipRoles = map[string]bool{
@@ -247,6 +248,13 @@ func (s Snapshot) Text() string {
 			fmt.Fprintf(&b, " [%s]", p)
 		}
 		b.WriteByte('\n')
+
+		if s.Elided != nil {
+			if count := s.Elided[n.Ref]; count > 0 {
+				b.WriteString(strings.Repeat("  ", n.Depth+1))
+				fmt.Fprintf(&b, "[+ %d more — snapshot --ref %s]\n", count, n.Ref)
+			}
+		}
 	}
 	return b.String()
 }

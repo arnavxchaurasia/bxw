@@ -152,7 +152,7 @@ const (
 	WholesaleThresholdTextLenRatio = 0.85 // Diff text length >= 85% of full snapshot text
 )
 
-func (d *Daemon) snapshot(tabID string, full bool, scopeRef, findQuery string, timeout time.Duration) (Snapshot, error) {
+func (d *Daemon) snapshot(tabID string, full bool, scopeRef, findQuery string, budget int, timeout time.Duration) (Snapshot, error) {
 	sess, err := d.tabSession(tabID)
 	if err != nil {
 		return Snapshot{}, err
@@ -188,11 +188,17 @@ func (d *Daemon) snapshot(tabID string, full bool, scopeRef, findQuery string, t
 		filteredNodes = FilterFind(nodes, findQuery)
 	}
 
+	var elided map[string]int
+	if budget > 0 {
+		filteredNodes, elided = BudgetSnapshot(filteredNodes, budget)
+	}
+
 	snap := Snapshot{
-		URL:   url,
-		Title: title,
-		Nodes: filteredNodes,
-		Hash:  currHash,
+		URL:    url,
+		Title:  title,
+		Nodes:  filteredNodes,
+		Hash:   currHash,
+		Elided: elided,
 	}
 
 	// Diff snapshots against stored baseline on disk (Pillar B)

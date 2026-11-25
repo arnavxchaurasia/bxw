@@ -350,7 +350,13 @@ func (d *Daemon) dispatch(req Request) Response {
 		full, _ := req.Args["full"].(bool)
 		scopeRef, _ := req.Args["ref"].(string)
 		findQuery, _ := req.Args["find"].(string)
-		snap, err := d.snapshot(tab, full, scopeRef, findQuery, timeout)
+		budget := 0
+		if b, ok := req.Args["budget"].(float64); ok {
+			budget = int(b)
+		} else if b, ok := req.Args["budget"].(int); ok {
+			budget = b
+		}
+		snap, err := d.snapshot(tab, full, scopeRef, findQuery, budget, timeout)
 		if err != nil {
 			return errorResponse(err)
 		}

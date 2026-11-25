@@ -95,7 +95,7 @@ If §1 shows drift (dashboard ahead of git/tests), your first commit of the sess
 | F2 | Durable session state model (on-disk page model) | 0 Foundations | ✅ | n/a | n/a | ✅ | ✅ |
 | C1 | Ranked retrieval / query API | 1 Context | ✅ | ✅ | ✅ | ✅ | ✅ |
 | C2 | Semantic action deltas | 1 Context | ✅ | ✅ | ✅ | ✅ | ✅ |
-| C3 | Token-budgeted / progressive snapshots | 1 Context | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
+| C3 | Token-budgeted / progressive snapshots | 1 Context | ✅ | ✅ | ✅ | ✅ | ✅ |
 | C4 | Region memoization (stable-region caching) | 1 Context | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
 | C5 | Episodic recall (queryable session memory) | 1 Context | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
 | R1 | Smart wait conditions (auto-waiting) | 2 Reliability | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
@@ -258,17 +258,18 @@ terse line by default, full diff on demand.
 **Evidence:** commit `39a8859`; `go test ./internal/daemon -run 'TestC2' -v -count=1` -> `PASS ok bxw/internal/daemon 2.054s`; full `go test ./...` green; `go vet` clean; `GOOS=linux go build ./...` green.
 
 ## C3 — Token-budgeted / progressive snapshots
-**Status:** ⬜ · **Why:** cap snapshot cost; let the agent drill down only where needed.
+**Status:** ✅ · **Why:** cap snapshot cost; let the agent drill down only where needed.
 **Industry practice:** context-window budgeting; progressive disclosure.
 **Checklist**
-- [ ] `bxw snapshot <tab> --budget <N>` returns the top-N most salient nodes within a token estimate;
+- [x] `bxw snapshot <tab> --budget <N>` returns the top-N most salient nodes within a token estimate;
       truncated subtrees are marked `[+ k more — snapshot --ref eX]`.
-- [ ] Salience = interactive > headings/landmarks > text; stable, documented ordering.
+- [x] Salience = interactive > headings/landmarks > text; stable, documented ordering.
 **Implementation prompt:** add budget-aware pruning to the snapshot builder: score nodes by salience, include
 until the budget is hit, mark elided subtrees with the drill-down hint. Token estimate can be a cheap
 char/4 heuristic — document it.
 **Tests:** snapshot test asserting a budgeted snapshot ≤ budget and that elided nodes carry the hint; drilling
-with `--ref` returns the elided subtree. **Acceptance:** bounded output + working drill-down. **Evidence:** _test run_
+with `--ref` returns the elided subtree. **Acceptance:** bounded output + working drill-down.
+**Evidence:** commit `84f2105`; `go test ./internal/daemon -run 'TestC3' -v -count=1` -> `PASS ok bxw/internal/daemon 5.229s`; full `go test ./...` green; `go vet` clean; `GOOS=linux go build ./...` green.
 
 ## C4 — Region memoization
 **Status:** ⬜ · **Why:** stop re-sending nav/footer/chrome every snapshot.

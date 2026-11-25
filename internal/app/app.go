@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"text/tabwriter"
 	"time"
@@ -135,7 +136,7 @@ usage:
   bxw setup <browser> [--revert]      enable/disable remote debugging on real profile
   bxw mcp [install [client]]          speak MCP over stdio or install into AI clients
   bxw snapshot <tab> [flags]          accessibility snapshot with stable element refs (e1, e2...)
-                                      flags: --full, --ref <ref>, --find <text>, --out <file>
+                                      flags: --full, --ref <ref>, --find <text>, --budget <N>, --out <file>
   bxw query <tab> [flags]             filter and rank elements by role, name, text, proximity
                                       flags: --role <r>, --name <n>, --text <t>, --near <label>, --limit <k>, --json
   bxw screenshot <tab> [flags]        capture viewport PNG, saving to cache (prints bxw://cache link)
@@ -354,11 +355,17 @@ func runSnapshot(args []string) error {
 	var pos []string
 	var browserName, outFile, scopeRef, findQuery string
 	full := false
+	budget := 0
 
 	for i := 0; i < len(args); i++ {
 		switch args[i] {
 		case "--full":
 			full = true
+		case "--budget":
+			if i+1 < len(args) {
+				budget, _ = strconv.Atoi(args[i+1])
+				i++
+			}
 		case "--ref":
 			if i+1 < len(args) {
 				scopeRef = args[i+1]
@@ -388,6 +395,8 @@ func runSnapshot(args []string) error {
 				scopeRef = strings.TrimPrefix(args[i], "--ref=")
 			} else if strings.HasPrefix(args[i], "--find=") {
 				findQuery = strings.TrimPrefix(args[i], "--find=")
+			} else if strings.HasPrefix(args[i], "--budget=") {
+				budget, _ = strconv.Atoi(strings.TrimPrefix(args[i], "--budget="))
 			} else if !strings.HasPrefix(args[i], "-") {
 				pos = append(pos, args[i])
 			}
@@ -404,12 +413,17 @@ func runSnapshot(args []string) error {
 		return err
 	}
 
-	data, err := daemon.Call(name, "snapshot", map[string]any{
+	callArgs := map[string]any{
 		"tab":  tab,
 		"full": full,
 		"ref":  scopeRef,
 		"find": findQuery,
-	})
+	}
+	if budget > 0 {
+		callArgs["budget"] = budget
+	}
+
+	data, err := daemon.Call(name, "snapshot", callArgs)
 	if err != nil {
 		return err
 	}

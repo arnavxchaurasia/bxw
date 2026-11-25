@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **C3: Token-budgeted / progressive snapshots (`bxw snapshot --budget <N>`).**
+  Capped snapshot token costs by scoring nodes into salience tiers (Tier 1: interactive,
+  Tier 2: structure, Tier 3: text/other) using a char/4 token estimate heuristic.
+  Pruned subtrees emit actionable drill-down hints (`[+ k more — snapshot --ref eX]`)
+  which compose directly with `snapshot --ref`. Added `--budget` flag to `snapshot`
+  CLI verb and `budget` parameter to `snapshot` MCP tool.
 - **C2: Semantic action deltas.** `actOn` now classifies baseline node diffs
   into concise 1-line semantic change summaries ("dialog opened: Confirm (2 buttons)",
   "cart badge 1→2", "notification: ...", "navigated to ...", "+3 elements").

@@ -561,6 +561,7 @@ func mcpTools() []mcpTool {
 					"full":    boolean("Return full accessibility tree without diffing (default false)."),
 					"ref":     str("Optional element ref (e.g. 'e12') to scope snapshot to a subtree."),
 					"find":    str("Optional search string to return matching elements and ancestors."),
+					"budget":  number("Optional token budget to prune less salient subtrees with drill-down hints."),
 				},
 				"required": []string{"tab"},
 			},
@@ -570,12 +571,16 @@ func mcpTools() []mcpTool {
 					return "", err
 				}
 				full, _ := args["full"].(bool)
-				data, err := daemon.Call(bName, "snapshot", map[string]any{
+				callArgs := map[string]any{
 					"tab":  argString(args, "tab"),
 					"full": full,
 					"ref":  argString(args, "ref"),
 					"find": argString(args, "find"),
-				})
+				}
+				if b, ok := args["budget"].(float64); ok && b > 0 {
+					callArgs["budget"] = int(b)
+				}
+				data, err := daemon.Call(bName, "snapshot", callArgs)
 				if err != nil {
 					return "", err
 				}
