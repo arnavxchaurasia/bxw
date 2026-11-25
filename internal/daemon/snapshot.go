@@ -45,14 +45,15 @@ func findRefByDescriptor(nodes []SnapNode, want RefDescriptor) (string, bool) {
 
 // Snapshot is the formatted accessibility snapshot of a tab.
 type Snapshot struct {
-	URL          string         `json:"url"`
-	Title        string         `json:"title"`
-	Nodes        []SnapNode     `json:"nodes"`
-	Hash         string         `json:"hash,omitempty"`
-	Diff         string         `json:"diff,omitempty"`
-	Unchanged    bool           `json:"unchanged,omitempty"`
-	PageReplaced bool           `json:"page_replaced,omitempty"`
-	Elided       map[string]int `json:"elided,omitempty"`
+	URL          string                    `json:"url"`
+	Title        string                    `json:"title"`
+	Nodes        []SnapNode                `json:"nodes"`
+	Hash         string                    `json:"hash,omitempty"`
+	Diff         string                    `json:"diff,omitempty"`
+	Unchanged    bool                      `json:"unchanged,omitempty"`
+	PageReplaced bool                      `json:"page_replaced,omitempty"`
+	Elided       map[string]int            `json:"elided,omitempty"`
+	Memoized     map[string]MemoizedRegion `json:"memoized,omitempty"`
 }
 
 var skipRoles = map[string]bool{
@@ -236,6 +237,16 @@ func (s Snapshot) Text() string {
 		b.WriteByte('\n')
 	}
 	for _, n := range s.Nodes {
+		if mem, ok := s.Memoized[n.Ref]; ok {
+			b.WriteString(strings.Repeat("  ", n.Depth))
+			label := mem.Role
+			if mem.Name != "" {
+				label += " " + fmt.Sprintf("%q", mem.Name)
+			}
+			fmt.Fprintf(&b, "%s %s unchanged (cache %q)\n", mem.Ref, label, mem.Hash)
+			continue
+		}
+
 		b.WriteString(strings.Repeat("  ", n.Depth))
 		fmt.Fprintf(&b, "%s %s", n.Ref, n.Role)
 		if n.Name != "" {

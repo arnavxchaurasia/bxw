@@ -96,7 +96,7 @@ If §1 shows drift (dashboard ahead of git/tests), your first commit of the sess
 | C1 | Ranked retrieval / query API | 1 Context | ✅ | ✅ | ✅ | ✅ | ✅ |
 | C2 | Semantic action deltas | 1 Context | ✅ | ✅ | ✅ | ✅ | ✅ |
 | C3 | Token-budgeted / progressive snapshots | 1 Context | ✅ | ✅ | ✅ | ✅ | ✅ |
-| C4 | Region memoization (stable-region caching) | 1 Context | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
+| C4 | Region memoization (stable-region caching) | 1 Context | ✅ | ✅ | ✅ | ✅ | ✅ |
 | C5 | Episodic recall (queryable session memory) | 1 Context | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
 | R1 | Smart wait conditions (auto-waiting) | 2 Reliability | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
 | R2 | Auto-reconnect / self-heal daemon | 2 Reliability | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
@@ -272,16 +272,17 @@ with `--ref` returns the elided subtree. **Acceptance:** bounded output + workin
 **Evidence:** commit `84f2105`; `go test ./internal/daemon -run 'TestC3' -v -count=1` -> `PASS ok bxw/internal/daemon 5.229s`; full `go test ./...` green; `go vet` clean; `GOOS=linux go build ./...` green.
 
 ## C4 — Region memoization
-**Status:** ⬜ · **Why:** stop re-sending nav/footer/chrome every snapshot.
+**Status:** ✅ · **Why:** stop re-sending nav/footer/chrome every snapshot.
 **Industry practice:** content-addressed caching; memoization.
 **Checklist**
-- [ ] Hash stable regions (landmarks: nav/header/footer/aside) into the F2 model; on re-snapshot emit
+- [x] Hash stable regions (landmarks: nav/header/footer/aside) into the F2 model; on re-snapshot emit
       "`nav` unchanged (cache `<hash>`)" instead of the region body.
-- [ ] A changed region re-expands normally.
+- [x] A changed region re-expands normally.
 **Implementation prompt:** segment the AXTree by ARIA landmark, hash each region's serialization, store in the
 SessionModel. On snapshot, replace an unchanged region with a one-line reference; only expand changed ones.
 **Tests:** snapshot a `data:` page twice with only the main region changed; assert nav/footer come back as
-cache references and main re-expands. **Acceptance:** unchanged regions collapse to references. **Evidence:** _test run_
+cache references and main re-expands. **Acceptance:** unchanged regions collapse to references.
+**Evidence:** commit `b58a26c`; `go test ./internal/daemon -run 'TestC4' -v -count=1` -> `PASS ok bxw/internal/daemon 5.191s`; full `go test ./...` green; `go vet` clean; `GOOS=linux go build ./...` green.
 
 ## C5 — Episodic recall + close-out distillation
 **Status:** ⬜ · **Why:** cheap "what have I already done here" so the agent re-orients without re-exploring;

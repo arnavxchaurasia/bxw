@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **C4: Region memoization (`bxw snapshot`).** ARIA landmark regions (navigation,
+  main, banner, contentinfo, complementary, region, form, search) are hashed into
+  the F2 SessionModel. On subsequent snapshots, unchanged regions are emitted as
+  concise 1-line cache references (`<ref> <role> ["name"] unchanged (cache "<hash>")`),
+  while modified regions re-expand normally, drastically cutting token overhead
+  for static chrome and navigation bars.
 - **C3: Token-budgeted / progressive snapshots (`bxw snapshot --budget <N>`).**
   Capped snapshot token costs by scoring nodes into salience tiers (Tier 1: interactive,
   Tier 2: structure, Tier 3: text/other) using a char/4 token estimate heuristic.

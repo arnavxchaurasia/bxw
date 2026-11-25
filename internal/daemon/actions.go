@@ -188,17 +188,31 @@ func (d *Daemon) snapshot(tabID string, full bool, scopeRef, findQuery string, b
 		filteredNodes = FilterFind(nodes, findQuery)
 	}
 
+	// C4: Region memoization against stored F2 SessionModel region hashes
+	var prevRegionHashes map[string]string
+	if sc, err := contextmgr.LoadSession("default"); err == nil && sc.RegionHashes != nil {
+		prevRegionHashes = sc.RegionHashes
+	}
+
+	var memoized map[string]MemoizedRegion
+	var newRegionHashes map[string]string
+	// Only memoize on full snapshot or when not returning an unchanged/diff string
+	if scopeRef == "" && findQuery == "" {
+		filteredNodes, memoized, newRegionHashes = MemoizeRegions(filteredNodes, prevRegionHashes)
+	}
+
 	var elided map[string]int
 	if budget > 0 {
 		filteredNodes, elided = BudgetSnapshot(filteredNodes, budget)
 	}
 
 	snap := Snapshot{
-		URL:    url,
-		Title:  title,
-		Nodes:  filteredNodes,
-		Hash:   currHash,
-		Elided: elided,
+		URL:      url,
+		Title:    title,
+		Nodes:    filteredNodes,
+		Hash:     currHash,
+		Elided:   elided,
+		Memoized: memoized,
 	}
 
 	// Diff snapshots against stored baseline on disk (Pillar B)
@@ -229,13 +243,21 @@ func (d *Daemon) snapshot(tabID string, full bool, scopeRef, findQuery string, b
 	// Save baseline to disk: state/<browser>/<tab>.json
 	_ = SaveTabState(d.br.Name, tabID, Snapshot{URL: url, Title: title, Nodes: nodes, Hash: currHash}, refs)
 
-	// F2: Update structured machine state with latest snapshot digest
+	// F2: Update structured machine state with latest snapshot digest and region hashes (C4)
 	if sc, err := contextmgr.LoadSession("default"); err == nil {
 		sc.Browser = d.br.Name
 		sc.ActiveTab = tabID
 		sc.URL = url
 		sc.Title = title
 		sc.LastSnapshot = currHash
+		if len(newRegionHashes) > 0 {
+			if sc.RegionHashes == nil {
+				sc.RegionHashes = make(map[string]string)
+			}
+			for k, v := range newRegionHashes {
+				sc.RegionHashes[k] = v
+			}
+		}
 		_ = contextmgr.SaveSession(sc)
 	}
 
