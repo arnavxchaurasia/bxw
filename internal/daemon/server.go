@@ -23,6 +23,7 @@ import (
 
 	"bxw/internal/browser"
 	"bxw/internal/config"
+	"bxw/internal/contextmgr"
 	"bxw/internal/exit"
 	"bxw/internal/osport"
 )
@@ -653,6 +654,46 @@ func (d *Daemon) dispatch(req Request) Response {
 			raw = []byte("{}")
 		}
 		return Response{Data: []byte(raw)}
+
+	case "recall":
+		session, _ := req.Args["session"].(string)
+		tab, _ := req.Args["tab"].(string)
+		grep, _ := req.Args["grep"].(string)
+		since, _ := req.Args["since"].(string)
+		var limit int
+		if lVal, ok := req.Args["limit"].(float64); ok {
+			limit = int(lVal)
+		} else if lInt, ok := req.Args["limit"].(int); ok {
+			limit = lInt
+		}
+		browserName, _ := req.Args["browser"].(string)
+		res, err := d.Recall(RecallParams{
+			Session: session,
+			Tab:     tab,
+			Grep:    grep,
+			Since:   since,
+			Limit:   limit,
+			Browser: browserName,
+		})
+		if err != nil {
+			return errorResponse(err)
+		}
+		data, _ := json.Marshal(res)
+		return Response{Data: data}
+
+	case "done":
+		session, _ := req.Args["session"].(string)
+		takeaway, _ := req.Args["takeaway"].(string)
+		if err := contextmgr.CloseoutSession(session, takeaway); err != nil {
+			return errorResponse(err)
+		}
+		sc, _ := contextmgr.LoadSession(session)
+		data, _ := json.Marshal(map[string]any{
+			"session_id": sc.SessionID,
+			"takeaway":   sc.Takeaway,
+			"closed_at":  sc.UpdatedAt,
+		})
+		return Response{Data: data}
 
 	case "stop":
 		select {

@@ -285,24 +285,24 @@ cache references and main re-expands. **Acceptance:** unchanged regions collapse
 **Evidence:** commit `b58a26c`; `go test ./internal/daemon -run 'TestC4' -v -count=1` -> `PASS ok bxw/internal/daemon 5.191s`; full `go test ./...` green; `go vet` clean; `GOOS=linux go build ./...` green.
 
 ## C5 — Episodic recall + close-out distillation
-**Status:** ⬜ · **Why:** cheap "what have I already done here" so the agent re-orients without re-exploring;
+**Status:** ✅ · **Why:** cheap "what have I already done here" so the agent re-orients without re-exploring;
 and a distilled takeaway when a task ends (flow's lesson: a session that never closes loses its learnings).
 **Industry practice:** episodic agent memory; event sourcing.
 **Prior art:** `Facets-cloud/flow` (MIT) — `flow done` sweeps a transcript into durable facts; lazy pointer
 loading. bxw adds the **ranked/selective retrieval flow explicitly lacks** (C1) instead of a full dump.
 **Checklist**
-- [ ] `bxw recall <tab|session> [--grep] [--since]` renders the F2 dated notes + `history/` into a compact,
+- [x] `bxw recall <tab|session> [--grep] [--since]` renders the F2 dated notes + `history/` into a compact,
       deduped timeline — **selective (C1-ranked / budgeted), not a full dump**. Read-only MCP tool `recall`.
-- [ ] `bxw done <session>` (close-out): distils the session's notes into a short durable summary persisted to
+- [x] `bxw done <session>` (close-out): distils the session's notes into a short durable summary persisted to
       the session's narrative, so the next session loads a 5-line takeaway instead of replaying everything.
-- [ ] Lazy pointers: `recall` prints note paths + a budgeted summary, not every note inlined.
+- [x] Lazy pointers: `recall` prints note paths + a budgeted summary, not every note inlined.
 **Implementation prompt:** query the SessionModel notes + `history/`, render a bounded deduped timeline ranked
 by relevance (reuse C1). Add a close-out that summarises notes into a durable takeaway (flow's `done` pattern)
 — on-disk, append-only. Keep it read-only except the explicit close-out write. Everything budgeted; print
 pointers over inlined content.
 **Tests:** seed dated notes, assert `recall` renders a bounded ranked timeline honouring `--grep`/`--since`;
 assert `done` writes a compact takeaway and leaves the raw notes intact. **Acceptance:** bounded recall +
-durable close-out. **Evidence:** _test run_
+durable close-out. **Evidence:** `go test ./internal/daemon -run 'TestC5' -v -count=1` -> `PASS ok bxw/internal/daemon 2.853s`; `go test ./...` green; `go vet` clean; `GOOS=linux go build ./...` green.
 
 ---
 

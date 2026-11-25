@@ -8,6 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **C5: Episodic recall + close-out distillation (`bxw recall`, `bxw done`).**
+  Episodic memory timeline merging dated notes (`context/<session>.md`) and navigation
+  history (`history/<browser>.jsonl`) into a compact, deduplicated timeline ranked
+  by relevance and capped by `--limit`. Output prints lazy pointers to note files and
+  cached resources rather than dumping raw transcripts. `bxw done` distils the session's
+  notes into a durable ~5-line takeaway persisted to `SessionModel` and append-only
+  markdown narrative. Read-only MCP tool `recall` and mutating MCP tool `done`.
 - **C4: Region memoization (`bxw snapshot`).** ARIA landmark regions (navigation,
   main, banner, contentinfo, complementary, region, form, search) are hashed into
   the F2 SessionModel. On subsequent snapshots, unchanged regions are emitted as

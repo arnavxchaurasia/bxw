@@ -62,7 +62,7 @@ also bxw's strongest trust differentiator over bx — consider pulling it forwar
 | ✅ **C2** | Semantic action delta: one-line "what changed" from `ChangedNodes` ("dialog opened", "cart 1→2", "navigated /checkout"); raw diff behind `--verbose`/blob | extend `ActResult.TerseSummary` | F2 | **DONE `39a8859`** — golden map of synthetic `ChangedNodes` → summary strings; terse by default, full diff on demand |
 | ✅ **C3** | Token-budgeted snapshot: `--budget N` returns top-N salient nodes; elided subtrees marked `[+k more — snapshot --ref eX]` | snapshot builder · `bxw snapshot --budget` | C1 | **DONE** — snapshot ≤ budget, elided nodes carry hint, `--ref` drills into the elided subtree |
 | ✅ **C4** | Region memoization: hash ARIA-landmark regions into F2; re-snapshot emits "`nav` unchanged (cache `<hash>`)"; changed regions re-expand | snapshot builder + SessionModel | F2 | **DONE** — snapshot twice, only `main` changed → nav/footer come back as cache refs, main re-expands |
-| **C5** | Episodic recall (`bxw recall`, C1-ranked/budgeted timeline of F2 notes+history) + close-out (`bxw done` distils notes to a durable 5-line takeaway) | daemon + `bxw recall`/`bxw done` · MCP `recall` (read-only) | C1, F2 | `recall` renders bounded ranked timeline honouring `--grep`/`--since`; `done` writes compact takeaway, raw notes intact |
+| ✅ **C5** | Episodic recall (`bxw recall`, C1-ranked/budgeted timeline of F2 notes+history) + close-out (`bxw done` distils notes to a durable 5-line takeaway) | daemon + `bxw recall`/`bxw done` · MCP `recall` (read-only) | C1, F2 | **DONE** — `recall` renders bounded ranked timeline honouring `--grep`/`--since`; `done` writes compact takeaway, raw notes intact |
 
 ## PHASE 2 — Reliability — roadmap §Phase 2
 

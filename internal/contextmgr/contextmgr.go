@@ -38,6 +38,7 @@ type SessionModel struct {
 	RegionHashes map[string]string `json:"region_hashes,omitempty"`        // stable-region memoization hashes (C4)
 	OpenTabs     []TabSummary      `json:"open_tabs,omitempty"`
 	LastActions  []ActionSummary   `json:"last_actions,omitempty"`
+	Takeaway     string            `json:"takeaway,omitempty"` // distilled closeout takeaway (C5)
 	UpdatedAt    time.Time         `json:"updated_at"`
 }
 
@@ -176,6 +177,117 @@ func ReadNotes(sessionID string) (string, error) {
 	return string(data), nil
 }
 
+// ParseNotes parses the raw markdown journal into structured NoteEntry items.
+func ParseNotes(md string) []NoteEntry {
+	if strings.TrimSpace(md) == "" {
+		return nil
+	}
+	var notes []NoteEntry
+	sections := strings.Split(md, "\n### [")
+	for i, sec := range sections {
+		if i == 0 && !strings.HasPrefix(md, "### [") && !strings.HasPrefix(md, "\n### [") {
+			continue
+		}
+		// sec looks like: "2006-01-02 15:04:05 UTC] agent\n- **Action:** `click e5`..."
+		endBracket := strings.Index(sec, "]")
+		if endBracket == -1 {
+			continue
+		}
+		tsStr := sec[:endBracket]
+		t, err := time.Parse("2006-01-02 15:04:05 UTC", tsStr)
+		if err != nil {
+			t = time.Now().UTC()
+		}
+		rest := sec[endBracket+1:]
+		lines := strings.Split(rest, "\n")
+		var author string
+		if len(lines) > 0 {
+			author = strings.TrimSpace(lines[0])
+		}
+
+		entry := NoteEntry{
+			Timestamp: t,
+			Author:    author,
+		}
+
+		for _, l := range lines[1:] {
+			trim := strings.TrimSpace(l)
+			if strings.HasPrefix(trim, "- **Action:**") {
+				val := strings.TrimPrefix(trim, "- **Action:**")
+				val = strings.Trim(strings.TrimSpace(val), "`")
+				entry.Action = val
+			} else if strings.HasPrefix(trim, "- **Summary:**") {
+				entry.Summary = strings.TrimSpace(strings.TrimPrefix(trim, "- **Summary:**"))
+			} else if strings.HasPrefix(trim, "- **Next:**") {
+				entry.Next = strings.TrimSpace(strings.TrimPrefix(trim, "- **Next:**"))
+			} else if strings.HasPrefix(trim, "- **Blocked-on:**") {
+				entry.BlockedOn = strings.TrimSpace(strings.TrimPrefix(trim, "- **Blocked-on:**"))
+			} else if strings.HasPrefix(trim, "- **Resource:**") {
+				val := strings.TrimPrefix(trim, "- **Resource:**")
+				val = strings.Trim(strings.TrimSpace(val), "`")
+				entry.BlobURI = val
+			}
+		}
+		notes = append(notes, entry)
+	}
+	return notes
+}
+
+// CloseoutSession distils a session into a durable takeaway (C5).
+// It updates SessionModel.Takeaway in machine state context/<session>.json and
+// appends a final closeout note into context/<session>.md (strictly append-only).
+func CloseoutSession(sessionID string, takeaway string) error {
+	if sessionID == "" {
+		sessionID = "default"
+	}
+	takeaway = strings.TrimSpace(takeaway)
+	if takeaway == "" {
+		// Auto-distill takeaway from notes if not provided
+		notesMD, _ := ReadNotes(sessionID)
+		notes := ParseNotes(notesMD)
+		if len(notes) > 0 {
+			limit := len(notes)
+			if limit > 5 {
+				limit = 5
+			}
+			var parts []string
+			for i := len(notes) - limit; i < len(notes); i++ {
+				n := notes[i]
+				desc := n.Summary
+				if desc == "" {
+					desc = n.Action
+				}
+				if desc != "" {
+					parts = append(parts, desc)
+				}
+			}
+			takeaway = strings.Join(parts, "; ")
+		}
+		if takeaway == "" {
+			takeaway = "Session completed."
+		}
+	}
+
+	// 1. Update machine state
+	sc, err := LoadSession(sessionID)
+	if err != nil {
+		sc = SessionModel{SessionID: sessionID}
+	}
+	sc.Takeaway = takeaway
+	if err := SaveSession(sc); err != nil {
+		return err
+	}
+
+	// 2. Append close-out note to markdown narrative (append-only)
+	closeoutNote := NoteEntry{
+		Timestamp: time.Now().UTC(),
+		Author:    "agent",
+		Action:    "done",
+		Summary:   fmt.Sprintf("Close-out Takeaway: %s", takeaway),
+	}
+	return AppendNote(sessionID, closeoutNote)
+}
+
 // RecordAction updates structured machine state and appends a narrative note in tandem.
 func RecordAction(browser, sessionID, tabID, action, summary, next, blobURI string) error {
 	if sessionID == "" {
@@ -252,6 +364,9 @@ func ListSessions() ([]SessionModel, error) {
 func (sc SessionModel) Summary() string {
 	var sb strings.Builder
 	sb.WriteString(fmt.Sprintf("Session: %s (Browser: %s, ActiveTab: %s)\n", sc.SessionID, sc.Browser, sc.ActiveTab))
+	if sc.Takeaway != "" {
+		sb.WriteString(fmt.Sprintf("Takeaway: %s\n", sc.Takeaway))
+	}
 	if sc.URL != "" {
 		sb.WriteString(fmt.Sprintf("Current Page: %s (%s)\n", sc.Title, sc.URL))
 	}

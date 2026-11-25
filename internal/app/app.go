@@ -93,6 +93,10 @@ func Run(args []string) error {
 		return runHistory(args[1:])
 	case "context":
 		return runContext(args[1:])
+	case "recall":
+		return runRecall(args[1:])
+	case "done":
+		return runDone(args[1:])
 	case "clean":
 		return runClean(args[1:])
 	case "setup":
@@ -153,6 +157,8 @@ usage:
   bxw perms [list|grant|revoke]       inspect and manage capability permissions
   bxw history [browser] [flags]       query navigation history (--since, --grep, --profile)
   bxw context [browser] [--session id] view session context summary
+  bxw recall <tab|session> [flags]    episodic recall timeline (--grep, --since, --limit, --browser)
+  bxw done [session] [--takeaway <t>] close out a session with a distilled takeaway
   bxw clean [--all]                   clean cache, stale state, and logs
   bxw stop <browser>                  stop the daemon
   bxw doctor                          self-check this machine
@@ -2084,6 +2090,151 @@ func runContext(args []string) error {
 		return exit.New(exit.Internal, "load context: %v", err)
 	}
 	fmt.Print(sc.Summary())
+	return nil
+}
+
+func runRecall(args []string) error {
+	var target, browserName, grepStr, sinceStr string
+	limit := 20
+	jsonOut := false
+
+	for i := 0; i < len(args); i++ {
+		switch args[i] {
+		case "--grep":
+			if i+1 < len(args) {
+				grepStr = args[i+1]
+				i++
+			}
+		case "--since":
+			if i+1 < len(args) {
+				sinceStr = args[i+1]
+				i++
+			}
+		case "--limit":
+			if i+1 < len(args) {
+				fmt.Sscanf(args[i+1], "%d", &limit)
+				i++
+			}
+		case "--browser":
+			if i+1 < len(args) {
+				browserName = args[i+1]
+				i++
+			}
+		case "--json":
+			jsonOut = true
+		default:
+			if strings.HasPrefix(args[i], "--grep=") {
+				grepStr = strings.TrimPrefix(args[i], "--grep=")
+			} else if strings.HasPrefix(args[i], "--since=") {
+				sinceStr = strings.TrimPrefix(args[i], "--since=")
+			} else if strings.HasPrefix(args[i], "--limit=") {
+				fmt.Sscanf(strings.TrimPrefix(args[i], "--limit="), "%d", &limit)
+			} else if strings.HasPrefix(args[i], "--browser=") {
+				browserName = strings.TrimPrefix(args[i], "--browser=")
+			} else if !strings.HasPrefix(args[i], "-") && target == "" {
+				target = args[i]
+			}
+		}
+	}
+
+	name, err := resolveBrowser(browserName)
+	if err != nil {
+		return err
+	}
+
+	sessionID := target
+	tabID := ""
+	if strings.HasPrefix(target, "tab-") || len(target) > 20 {
+		tabID = target
+	}
+
+	cArgs := map[string]any{
+		"session": sessionID,
+		"tab":     tabID,
+		"grep":    grepStr,
+		"since":   sinceStr,
+		"limit":   limit,
+		"browser": name,
+	}
+
+	data, err := daemon.Call(name, "recall", cArgs)
+	if err != nil {
+		return err
+	}
+
+	if jsonOut {
+		fmt.Println(string(data))
+		return nil
+	}
+
+	var res daemon.RecallResult
+	if err := json.Unmarshal(data, &res); err != nil {
+		fmt.Println(string(data))
+		return nil
+	}
+
+	fmt.Print(res.Text())
+	return nil
+}
+
+func runDone(args []string) error {
+	var sessionID, takeaway, browserName string
+	jsonOut := false
+
+	for i := 0; i < len(args); i++ {
+		switch args[i] {
+		case "--takeaway":
+			if i+1 < len(args) {
+				takeaway = args[i+1]
+				i++
+			}
+		case "--browser":
+			if i+1 < len(args) {
+				browserName = args[i+1]
+				i++
+			}
+		case "--json":
+			jsonOut = true
+		default:
+			if strings.HasPrefix(args[i], "--takeaway=") {
+				takeaway = strings.TrimPrefix(args[i], "--takeaway=")
+			} else if strings.HasPrefix(args[i], "--browser=") {
+				browserName = strings.TrimPrefix(args[i], "--browser=")
+			} else if !strings.HasPrefix(args[i], "-") && sessionID == "" {
+				sessionID = args[i]
+			}
+		}
+	}
+
+	if sessionID == "" {
+		sessionID = "default"
+	}
+
+	name, err := resolveBrowser(browserName)
+	if err != nil {
+		return err
+	}
+
+	data, err := daemon.Call(name, "done", map[string]any{
+		"session":  sessionID,
+		"takeaway": takeaway,
+	})
+	if err != nil {
+		return err
+	}
+
+	if jsonOut {
+		fmt.Println(string(data))
+		return nil
+	}
+
+	var res map[string]any
+	if err := json.Unmarshal(data, &res); err == nil {
+		fmt.Printf("session %q closed out\nTakeaway: %v\n", res["session_id"], res["takeaway"])
+		return nil
+	}
+
+	fmt.Println(string(data))
 	return nil
 }
 

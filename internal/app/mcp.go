@@ -1133,6 +1133,85 @@ func mcpTools() []mcpTool {
 			},
 		},
 		{
+			Name:        "recall",
+			Description: "Episodic recall query over dated session notes and browser history. Read-only selective, relevance-ranked timeline with lazy pointers.",
+			InputSchema: map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"session": str("Session ID to recall notes from (default: 'default')."),
+					"tab":     str("Filter history events to a specific tab ID."),
+					"grep":    str("Keyword or action pattern to search and rank by."),
+					"since":   str("ISO timestamp or Go duration string (e.g. '1h', '24h') to filter since."),
+					"limit":   number("Max items to return (default: 20)."),
+					"browser": str("Browser name (default: active/first)."),
+				},
+			},
+			run: func(args map[string]any) (string, error) {
+				bName, err := resolveBrowser(argString(args, "browser"))
+				if err != nil {
+					return "", err
+				}
+				session := argString(args, "session")
+				if session == "" {
+					session = "default"
+				}
+				tab := argString(args, "tab")
+				grep := argString(args, "grep")
+				since := argString(args, "since")
+				limit := 20
+				if l, ok := args["limit"].(float64); ok && l > 0 {
+					limit = int(l)
+				}
+				data, err := daemon.Call(bName, "recall", map[string]any{
+					"session": session,
+					"tab":     tab,
+					"grep":    grep,
+					"since":   since,
+					"limit":   limit,
+					"browser": bName,
+				})
+				if err != nil {
+					return "", err
+				}
+				var res daemon.RecallResult
+				if err := json.Unmarshal(data, &res); err != nil {
+					return string(data), nil
+				}
+				return res.Text(), nil
+			},
+		},
+		{
+			Name:        "done",
+			Description: "Close out an agent session by distilling notes into a durable ~5-line takeaway persisted into the session narrative.",
+			InputSchema: map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"session":  str("Session ID to close out (default: 'default')."),
+					"takeaway": str("Distilled takeaway summary (optional; auto-synthesised if omitted)."),
+					"browser":  str("Browser name (default: active/first)."),
+				},
+			},
+			run: func(args map[string]any) (string, error) {
+				bName, err := resolveBrowser(argString(args, "browser"))
+				if err != nil {
+					return "", err
+				}
+				session := argString(args, "session")
+				if session == "" {
+					session = "default"
+				}
+				takeaway := argString(args, "takeaway")
+				data, err := daemon.Call(bName, "done", map[string]any{
+					"session":  session,
+					"takeaway": takeaway,
+				})
+				if err != nil {
+					return "", err
+				}
+				return string(data), nil
+			},
+		},
+		{
 			Name:        "list_profiles",
 			Description: "List all user profiles found for an installed browser.",
 			InputSchema: map[string]any{
