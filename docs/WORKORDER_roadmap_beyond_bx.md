@@ -323,17 +323,17 @@ removal, timeouts return the named-condition error. **Acceptance:** each conditi
 **Evidence:** `go test ./internal/daemon -run 'TestR1' -v -count=1` -> `PASS ok bxw/internal/daemon 9.163s`; full `go test ./...` green; `go vet` clean; `GOOS=linux go build ./...` green.
 
 ## R2 — Auto-reconnect / self-heal daemon
-**Status:** ⬜ · **Why:** survive a transient CDP drop / browser restart without the agent seeing a hard failure.
+**Status:** ✅ · **Why:** survive a transient CDP drop / browser restart without the agent seeing a hard failure.
 **Industry practice:** supervised reconnect with exponential backoff + jitter; circuit breaker.
 **Checklist**
-- [ ] On CDP read-loop error, attempt bounded reconnect (backoff+jitter) using the F2 model to restore target.
-- [ ] Surface a structured, typed error only after retries are exhausted; log attempts to `diagnostics`/logs.
+- [x] On CDP read-loop error, attempt bounded reconnect (backoff+jitter) using the F2 model to restore target.
+- [x] Surface a structured, typed error only after retries are exhausted; log attempts to `diagnostics`/logs.
 **Implementation prompt:** wrap `TabConn` dial/read with a supervised reconnect that re-resolves the tab via
 the SessionModel and resubscribes. Cap attempts; emit a typed `exit.Upstream` on give-up. Never silently
 swallow — log each attempt.
 **Tests:** simulate a dropped `TabConn` (close the ws mid-session) and assert reconnect restores a working
 session, and that permanent failure returns the typed error. **Acceptance:** recovers transient drop; fails
-loud on permanent. **Evidence:** _test run_
+loud on permanent. **Evidence:** `go test ./internal/daemon -run 'TestR2' -v -count=1` -> `PASS ok bxw/internal/daemon 7.913s`; full `go test ./...` green; `go vet` clean; `GOOS=linux go build ./...` green.
 
 ---
 

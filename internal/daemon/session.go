@@ -5,7 +5,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
+	"math/rand"
+	"os"
+	"path/filepath"
 	"regexp"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -14,13 +19,17 @@ import (
 	"github.com/chromedp/cdproto/cdp"
 	jsonv2 "github.com/chromedp/cdproto/cdp/jsonv2"
 	"github.com/chromedp/cdproto/dom"
+	"github.com/chromedp/cdproto/emulation"
+	cdplog "github.com/chromedp/cdproto/log"
 	"github.com/chromedp/cdproto/network"
 	"github.com/chromedp/cdproto/page"
 	"github.com/chromedp/cdproto/runtime"
 	"github.com/coder/websocket"
 	"github.com/coder/websocket/wsjson"
 
+	"bxw/internal/contextmgr"
 	"bxw/internal/exit"
+	"bxw/internal/osport"
 )
 
 // TabConn is a WebSocket connection to a DevTools target tab, implementing cdp.Session.
@@ -207,6 +216,9 @@ type tabSession struct {
 	// R1: Track in-flight network requests for network-idle condition
 	netMu        sync.Mutex
 	inFlightReqs map[network.RequestID]time.Time
+
+	// R2: Supervised reconnect support
+	d *Daemon
 }
 
 func (sess *tabSession) watchDialogs(ctx context.Context) {
@@ -272,13 +284,179 @@ func (sess *tabSession) location(ctx context.Context) (string, string) {
 	return loc[0], loc[1]
 }
 
+// logReconnect logs a reconnect attempt or outcome to diagnostics/logs.
+func logReconnect(browserName, tabID, msg string) {
+	log.Printf("[reconnect] browser=%s tab=%s: %s", browserName, tabID, msg)
+	p := osport.Current()
+	logsDir := p.LogsDir()
+	if err := os.MkdirAll(logsDir, 0o755); err == nil {
+		diagFile := filepath.Join(logsDir, "reconnect.log")
+		if f, err := os.OpenFile(diagFile, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644); err == nil {
+			defer f.Close()
+			entry := fmt.Sprintf("[%s] browser=%s tab=%s: %s\n", time.Now().UTC().Format(time.RFC3339), browserName, tabID, msg)
+			_, _ = f.WriteString(entry)
+		}
+	}
+}
+
+// ensureAlive verifies the session connection is alive and healthy.
+// If the connection was dropped (CDP read-loop error), it performs supervised
+// reconnect with exponential backoff + jitter, re-resolving the target via F2 SessionModel.
+// If retries are exhausted, it returns a typed exit.Upstream error.
+func (sess *tabSession) ensureAlive(ctx context.Context) error {
+	if sess == nil {
+		return exit.New(exit.NotFound, "nil tab session")
+	}
+
+	sess.conn.mu.Lock()
+	dropped := sess.conn.closeErr != nil
+	sess.conn.mu.Unlock()
+
+	if !dropped {
+		return nil
+	}
+
+	if sess.d == nil {
+		return exit.New(exit.Upstream, "connection closed and daemon backpointer missing: %v", sess.conn.closeErr)
+	}
+
+	browserName := sess.d.br.Name
+	tabID := sess.id
+	logReconnect(browserName, tabID, fmt.Sprintf("CDP connection dropped (%v); starting supervised reconnect", sess.conn.closeErr))
+
+	// Re-resolve target via F2 SessionModel if available
+	lastTargetURL := ""
+	if sm, err := contextmgr.LoadSession(sess.d.br.Name); err == nil {
+		if sm.URL != "" {
+			lastTargetURL = sm.URL
+		}
+	}
+
+	maxRetries := 4
+	baseBackoff := 100 * time.Millisecond
+
+	for attempt := 1; attempt <= maxRetries; attempt++ {
+		// Exponential backoff with jitter: backoff = base * 2^(attempt-1) + jitter(0..50ms)
+		backoff := baseBackoff * time.Duration(1<<(attempt-1))
+		jitter := time.Duration(rand.Intn(50)) * time.Millisecond
+		sleepDur := backoff + jitter
+		logReconnect(browserName, tabID, fmt.Sprintf("attempt %d/%d (waiting %s)", attempt, maxRetries, sleepDur))
+
+		select {
+		case <-ctx.Done():
+			return exit.New(exit.Upstream, "reconnect aborted by context: %v", ctx.Err())
+		case <-time.After(sleepDur):
+		}
+
+		// Re-discover port and live tabs
+		_, _ = sess.d.discoverPort()
+		tabs, err := sess.d.listTabs()
+		if err != nil {
+			logReconnect(browserName, tabID, fmt.Sprintf("attempt %d failed to list tabs: %v", attempt, err))
+			continue
+		}
+
+		var targetTab Tab
+		found := false
+
+		// 1. Match by tab ID
+		for _, t := range tabs {
+			if strings.EqualFold(t.ID, tabID) || strings.HasPrefix(strings.ToLower(t.ID), strings.ToLower(tabID)) {
+				targetTab = t
+				found = true
+				break
+			}
+		}
+
+		// 2. If tab ID changed after restart, re-resolve by URL from F2 SessionModel
+		if !found && lastTargetURL != "" {
+			for _, t := range tabs {
+				if strings.EqualFold(t.URL, lastTargetURL) || strings.HasPrefix(t.URL, lastTargetURL) {
+					targetTab = t
+					found = true
+					logReconnect(browserName, tabID, fmt.Sprintf("re-resolved target by F2 URL %q -> new tab ID %s", lastTargetURL, t.ID))
+					sess.id = t.ID
+					break
+				}
+			}
+		}
+
+		// 3. Fallback to first non-empty tab
+		if !found && len(tabs) > 0 {
+			targetTab = tabs[0]
+			found = true
+			logReconnect(browserName, tabID, fmt.Sprintf("falling back to tab %s (%s)", targetTab.ID, targetTab.URL))
+			sess.id = targetTab.ID
+		}
+
+		if !found {
+			logReconnect(browserName, tabID, fmt.Sprintf("attempt %d: no matching tab found", attempt))
+			continue
+		}
+
+		// Redial WebSocket connection
+		newConn, err := dialTab(ctx, targetTab.WS)
+		if err != nil {
+			logReconnect(browserName, tabID, fmt.Sprintf("attempt %d failed to dial %s: %v", attempt, targetTab.WS, err))
+			continue
+		}
+
+		// Re-enable domains and re-subscribe
+		initCtx, initCancel := context.WithTimeout(context.Background(), 5*time.Second)
+		_, _ = cdp.Call(initCtx, newConn, page.Enable, page.EnableParams{})
+		_, _ = cdp.Call(initCtx, newConn, emulation.SetFocusEmulationEnabled, emulation.SetFocusEmulationEnabledParams{Enabled: true})
+		_, _ = cdp.Call(initCtx, newConn, dom.Enable, dom.EnableParams{})
+		_, _ = cdp.Call(initCtx, newConn, accessibility.Enable, cdp.Empty{})
+		_, _ = cdp.Call(initCtx, newConn, runtime.Enable, cdp.Empty{})
+		_, _ = cdp.Call(initCtx, newConn, cdplog.Enable, cdp.Empty{})
+		_, _ = cdp.Call(initCtx, newConn, network.Enable, network.EnableParams{})
+		initCancel()
+
+		sess.conn = newConn
+		sess.wsURL = targetTab.WS
+		sess.refs = make(map[string]cdp.BackendNodeID)
+		sess.refDescs = make(map[string]RefDescriptor)
+
+		// Restart watchers on new connection
+		sess.watchDialogs(context.Background())
+		sess.startDebugCapture(context.Background())
+
+		// Update daemon sessions map
+		sess.d.mu.Lock()
+		sess.d.sessions[sess.id] = sess
+		sess.d.mu.Unlock()
+
+		logReconnect(browserName, tabID, fmt.Sprintf("reconnect successful on attempt %d; session restored", attempt))
+		return nil
+	}
+
+	errMsg := fmt.Sprintf("CDP connection dropped and reconnect failed after %d attempts: %v", maxRetries, sess.conn.closeErr)
+	logReconnect(browserName, tabID, errMsg)
+	return exit.New(exit.Upstream, "%s", errMsg)
+}
+
+// eval evaluates JavaScript on the tabSession with automatic reconnect supervision.
 func (sess *tabSession) eval(ctx context.Context, expr string, out any) error {
+	if err := sess.ensureAlive(ctx); err != nil {
+		return err
+	}
+
 	yes := true
 	res, err := cdp.Call(ctx, sess.conn, runtime.Evaluate, runtime.EvaluateParams{
 		Expression:    expr,
 		ReturnByValue: &yes,
 		AwaitPromise:  &yes,
 	})
+	if err != nil {
+		// If call itself failed due to a sudden drop, try reconnect once more
+		if sess.ensureAlive(ctx) == nil {
+			res, err = cdp.Call(ctx, sess.conn, runtime.Evaluate, runtime.EvaluateParams{
+				Expression:    expr,
+				ReturnByValue: &yes,
+				AwaitPromise:  &yes,
+			})
+		}
+	}
 	if err != nil {
 		return err
 	}

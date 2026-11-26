@@ -42,6 +42,10 @@ func (d *Daemon) wait(tabID string, cond waitCond, timeout time.Duration) (map[s
 	sess.mu.Lock()
 	defer sess.mu.Unlock()
 
+	if err := sess.ensureAlive(context.Background()); err != nil {
+		return nil, err
+	}
+
 	if cond.MS > 0 {
 		time.Sleep(time.Duration(cond.MS) * time.Millisecond)
 		return map[string]any{"satisfied": true, "waitedMs": cond.MS}, nil

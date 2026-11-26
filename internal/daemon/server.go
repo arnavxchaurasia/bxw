@@ -786,6 +786,7 @@ func (d *Daemon) tabSession(tabID string) (*tabSession, error) {
 		consoleBuf:   newRingBuffer(500),
 		netBuf:       newRingBuffer(500),
 		inFlightReqs: make(map[network.RequestID]time.Time),
+		d:            d,
 	}
 	sess.watchDialogs(context.Background())
 	sess.startDebugCapture(context.Background())

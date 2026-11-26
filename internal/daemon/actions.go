@@ -59,6 +59,10 @@ func (d *Daemon) actOn(tabID string, timeout time.Duration, fn func(ctx context.
 	sess.mu.Lock()
 	defer sess.mu.Unlock()
 
+	if err := sess.ensureAlive(context.Background()); err != nil {
+		return ActResult{}, err
+	}
+
 	if err := sess.errIfDialog(); err != nil {
 		return ActResult{}, err
 	}

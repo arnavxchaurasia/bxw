@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **R2: Supervised auto-reconnect and self-healing daemon.**
+  Added supervised reconnection with exponential backoff and jitter on transient CDP connection drops.
+  Re-resolves target tabs using the durable F2 SessionModel (matching by tab ID or last known URL),
+  re-enables DevTools domains, restores subscriptions, and updates daemon session state seamlessly.
+  Diagnostics are logged to `%LOCALAPPDATA%\bxw\logs\reconnect.log`. Surfaces a structured, typed
+  `exit.Upstream` error if reconnect retries are exhausted.
 - **R1: Smart wait conditions and actionability auto-waiting (`bxw wait`, `click --wait`, `fill --wait`).**
   Extended `bxw wait` with web-first predicates: `--gone <selector|ref>` (waits for removal/detachment),
   `--stable` (waits for DOM mutations to quiet down for 100ms via `MutationObserver`), and
