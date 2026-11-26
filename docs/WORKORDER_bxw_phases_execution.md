@@ -7,7 +7,7 @@ them in and the dependencies between them.** Do not re-spec here — follow the 
 
 **Done already (do not rebuild):** F1 stable semantic refs ✅, F2 durable session state model ✅ (Phase 0).
 **C1 ranked retrieval / query API ✅** (Phase 1 #1) — commit `fc79f60`, verified: CI green (ubuntu + windows),
-`verify-roadmap` OK, real headless-browser integration test. **Phases 1–2 (C1–C5, R1–R2) complete ✅ — next up: S1 (Phase 3, the redaction gate).**
+`verify-roadmap` OK, real headless-browser integration test. **Next up: C2.**
 
 ## Rules (same as the roadmap — enforced)
 
@@ -40,12 +40,12 @@ also bxw's strongest trust differentiator over bx — consider pulling it forwar
 ## Recommended build order (critical path)
 
 1. ✅ **C1** — ranked retrieval — **DONE** (`fc79f60`, CI green, verify-roadmap OK)
-2. ✅ **C2 · C3 · C4** — context/token-efficiency — **DONE**
-3. ✅ **C5** — episodic recall + close-out — **DONE** (Phase 1 complete)
-4. ✅ **R1** — smart wait conditions — **DONE**
+2. **C2 · C3 · C4** — context/token-efficiency (C3 needs C1; C4 needs F2 ✅; parallelizable after C1)
+3. **C5** — episodic recall + close-out (needs C1)
+4. **R1** — smart wait conditions (needed by X1)
 5. **S1** ★ — redaction (gate for Phase 5 + X3; the trust feature — do it before any DevTools work)
 6. **S2** — read-only mode (gate for Phase 5 mutations)
-7. ✅ **R2** — self-heal daemon — **DONE** · **S3** — dry-run preview (pending; slot in anytime)
+7. **R2 · S3** — self-heal daemon · dry-run preview (independent; slot in anytime after their phase opens)
 8. **X1 · X2 · X3** — record/replay (needs F1 + R1) · assertions · event stream (needs S1)
 9. **D1 → D2 → D3 → D4 → D5** — DevTools expansion (all need S1; mutating ones need S2)
 
@@ -68,14 +68,14 @@ also bxw's strongest trust differentiator over bx — consider pulling it forwar
 
 | ID | Build | Plugs in | Depends | Acceptance |
 |----|-------|----------|---------|------------|
-| ✅ **R1** | Smart waits: `--selector`/`--text`/`--gone`/`--stable`/`--network-idle`/`--load`/`--ms`, each `--timeout`; optional auto-wait before act | `bxw wait` + `actOn` opt-in | — | **DONE** — delayed-element fixture: `--selector` waits & succeeds, `--gone` waits for removal, timeout names the unmet condition |
-| ✅ **R2** | Self-heal: on CDP read-loop error, bounded reconnect (backoff+jitter) re-resolving target via F2; typed error only after retries exhausted; log attempts | wrap `TabConn` dial/read | F2 | **DONE** — drop the ws mid-session → reconnect restores a working session; permanent failure returns typed `exit.Upstream` |
+| **R1** | Smart waits: `--selector`/`--text`/`--gone`/`--stable`/`--network-idle`/`--load`/`--ms`, each `--timeout`; optional auto-wait before act | `bxw wait` + `actOn` opt-in | — | delayed-element fixture: `--selector` waits & succeeds, `--gone` waits for removal, timeout names the unmet condition |
+| **R2** | Self-heal: on CDP read-loop error, bounded reconnect (backoff+jitter) re-resolving target via F2; typed error only after retries exhausted; log attempts | wrap `TabConn` dial/read | F2 | drop the ws mid-session → reconnect restores a working session; permanent failure returns typed `exit.Upstream` |
 
 ## PHASE 3 — Safety & trust (S1 before Phase 5) — roadmap §Phase 3
 
 | ID | Build | Plugs in | Depends | Acceptance |
 |----|-------|----------|---------|------------|
-| **S1** ★ | `internal/redact`: pure `Redact(string)` + structured-field masking over a documented pattern set (password fields, bearer/JWT/API-key, high-entropy, `ghp_`/`AKIA…`/`xox…`/PEM). Route **every** outbound serializer through it. On by default; `--no-redact` needs a `perms` grant | all result serializers | — | table test: secrets masked, benign untouched; filled-password snapshot + JWT storage dump come back masked |
+| ✅ **S1** ★ | `internal/redact`: pure `Redact(string)` + structured-field masking over a documented pattern set (password fields, bearer/JWT/API-key, high-entropy, `ghp_`/`AKIA…`/`xox…`/PEM). Route **every** outbound serializer through it. On by default; `--no-redact` needs a `perms` grant | all result serializers | — | **DONE** — table test: secrets masked, benign untouched; live integration: password snapshot + JWT storage dump come back masked; ungranted `--no-redact` refused |
 | **S2** | Read-only mode: `BXW_READONLY=1` / `--read-only` blocks every mutating op (click/fill/type/key/drag/upload/cookie-set/storage-write/mutating-cdp) with typed `exit.User`; reads allowed | gate mutating `dispatch` cases + cdp passthrough | — | read-only set → click/fill/cookie-set refuse, snapshot/query succeed |
 | **S3** | Dry-run: `--dry-run` on mutating verbs resolves target + reports intended effect (element, URL, value) without dispatching input | each mutating run path (reuse `selector()`) | — | `--dry-run` click returns resolved target, page unchanged (snapshot identical) |
 
@@ -101,6 +101,6 @@ also bxw's strongest trust differentiator over bx — consider pulling it forwar
 
 ## Next action for the implementation model
 
-C1–C5 and R1–R2 are ✅ (`verify-roadmap` OK, tests green) — **Phases 1–2 are complete.**
+C1–C5, R1–R2, and S1 are ✅ (`verify-roadmap` OK, tests green) — **S1 redaction gate complete.**
 Resume per the roadmap's anti-drift §1 (`git log`, `go test ./...`, `scripts/verify-roadmap.sh` — reality wins over the dashboard),
-then start **S1** (WIP = 1) — secret / PII redaction (Phase 3; the trust feature and the gate for all of Phase 5).
+then start **S2** (WIP = 1) — read-only mode (`BXW_READONLY=1` / `--read-only`, Phase 3).

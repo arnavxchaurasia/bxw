@@ -8,6 +8,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **S1: Secret and PII redaction layer (`--no-redact`, `internal/redact`).**
+  Implemented single redaction pass applied to all outbound daemon serializers
+  (`snapshot`, `read`, `query`, `console`, `network`, `storage`). Masks OWASP credential
+  and token classes: GitHub personal access tokens (`ghp_`, `github_pat_`), AWS access
+  keys (`AKIA...`), Slack tokens (`xox[baprs]-`), Google API keys (`AIza...`), Bearer
+  and JWT tokens, PEM private key blocks, URL basic auth, sensitive parameters (`password=...`,
+  `secret=...`, etc.), password input values, sensitive cookies/localStorage entries, and
+  standalone high-entropy secrets (Shannon entropy >= 4.5 bits/char). Enabled by default;
+  opt-out flag `--no-redact` is gated by `perms.Default().Check(origin, CapNoRedact)` and
+  refuses with a typed error unless granted. Added `--no-redact` flag to CLI verbs and
+  `no_redact` parameter to MCP tools.
 - **R2: Supervised auto-reconnect and self-healing daemon.**
   Added supervised reconnection with exponential backoff and jitter on transient CDP connection drops.
   Re-resolves target tabs using the durable F2 SessionModel (matching by tab ID or last known URL),

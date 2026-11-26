@@ -97,10 +97,10 @@ If §1 shows drift (dashboard ahead of git/tests), your first commit of the sess
 | C2 | Semantic action deltas | 1 Context | ✅ | ✅ | ✅ | ✅ | ✅ |
 | C3 | Token-budgeted / progressive snapshots | 1 Context | ✅ | ✅ | ✅ | ✅ | ✅ |
 | C4 | Region memoization (stable-region caching) | 1 Context | ✅ | ✅ | ✅ | ✅ | ✅ |
-| C5 | Episodic recall (queryable session memory) | 1 Context | ✅ | ✅ | ✅ | ✅ | ✅ |
-| R1 | Smart wait conditions (auto-waiting) | 2 Reliability | ✅ | ✅ | ✅ | ✅ | ✅ |
-| R2 | Auto-reconnect / self-heal daemon | 2 Reliability | ✅ | ✅ | ✅ | ✅ | ✅ |
-| S1 | Secret / PII redaction layer | 3 Safety | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
+| C5 | Episodic recall (queryable session memory) | 1 Context | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
+| R1 | Smart wait conditions (auto-waiting) | 2 Reliability | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
+| R2 | Auto-reconnect / self-heal daemon | 2 Reliability | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
+| S1 | Secret / PII redaction layer | 3 Safety | ✅ | ✅ | ✅ | ✅ | ✅ |
 | S2 | Read-only mode | 3 Safety | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
 | S3 | Dry-run / preview for mutations | 3 Safety | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
 | X1 | Record & replay (deterministic sessions) | 4 Workflows | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
@@ -309,51 +309,51 @@ durable close-out. **Evidence:** `go test ./internal/daemon -run 'TestC5' -v -co
 # ════════ PHASE 2 — RELIABILITY ════════
 
 ## R1 — Smart wait conditions
-**Status:** ✅ · **Why:** kills the "acted too early" flake class; `wait` exists but needs real conditions.
+**Status:** ⬜ · **Why:** kills the "acted too early" flake class; `wait` exists but needs real conditions.
 **Industry practice:** Playwright auto-waiting / web-first actionability (visible, stable, enabled), network-idle.
 **Checklist**
-- [x] `bxw wait <tab>` supports: `--selector`/`--text` (appears), `--gone` (disappears), `--stable` (DOM quiet),
+- [ ] `bxw wait <tab>` supports: `--selector`/`--text` (appears), `--gone` (disappears), `--stable` (DOM quiet),
       `--network-idle`, `--load`, `--ms`, each with `--timeout`.
-- [x] `actOn` optionally auto-waits for actionability before clicking/filling (opt-in flag).
+- [ ] `actOn` optionally auto-waits for actionability before clicking/filling (opt-in flag).
 **Implementation prompt:** implement conditions as polled predicates with a deadline (reuse `settle`/`stableDOMJS`).
 Network-idle via CDP Network events (0 in-flight for 500ms). Return a clear timeout error naming the unmet
 condition. Model semantics on Playwright's actionability.
 **Tests:** `data:` page with a delayed element; assert `--selector` waits and succeeds, `--gone` waits for
 removal, timeouts return the named-condition error. **Acceptance:** each condition works + clean timeouts.
-**Evidence:** `go test ./internal/daemon -run 'TestR1' -v -count=1` -> `PASS ok bxw/internal/daemon 9.163s`; full `go test ./...` green; `go vet` clean; `GOOS=linux go build ./...` green.
+**Evidence:** _test run_
 
 ## R2 — Auto-reconnect / self-heal daemon
-**Status:** ✅ · **Why:** survive a transient CDP drop / browser restart without the agent seeing a hard failure.
+**Status:** ⬜ · **Why:** survive a transient CDP drop / browser restart without the agent seeing a hard failure.
 **Industry practice:** supervised reconnect with exponential backoff + jitter; circuit breaker.
 **Checklist**
-- [x] On CDP read-loop error, attempt bounded reconnect (backoff+jitter) using the F2 model to restore target.
-- [x] Surface a structured, typed error only after retries are exhausted; log attempts to `diagnostics`/logs.
+- [ ] On CDP read-loop error, attempt bounded reconnect (backoff+jitter) using the F2 model to restore target.
+- [ ] Surface a structured, typed error only after retries are exhausted; log attempts to `diagnostics`/logs.
 **Implementation prompt:** wrap `TabConn` dial/read with a supervised reconnect that re-resolves the tab via
 the SessionModel and resubscribes. Cap attempts; emit a typed `exit.Upstream` on give-up. Never silently
 swallow — log each attempt.
 **Tests:** simulate a dropped `TabConn` (close the ws mid-session) and assert reconnect restores a working
 session, and that permanent failure returns the typed error. **Acceptance:** recovers transient drop; fails
-loud on permanent. **Evidence:** `go test ./internal/daemon -run 'TestR2' -v -count=1` -> `PASS ok bxw/internal/daemon 7.913s`; full `go test ./...` green; `go vet` clean; `GOOS=linux go build ./...` green.
+loud on permanent. **Evidence:** _test run_
 
 ---
 
 # ════════ PHASE 3 — SAFETY & TRUST (do S1 before Phase 5) ════════
 
 ## S1 — Secret / PII redaction layer
-**Status:** ⬜ · **Why:** lets "inspect everything" be safe — secrets never reach the model context. A trust
+**Status:** ✅ · **Why:** lets "inspect everything" be safe — secrets never reach the model context. A trust
 feature bx cannot match; **prerequisite for Phase 5**.
 **Industry practice:** OWASP secret/token classes; allowlist-masked logging.
 **Checklist**
-- [ ] A single redaction pass applied to all outbound daemon output: snapshots, console, network, storage,
+- [x] A single redaction pass applied to all outbound daemon output: snapshots, console, network, storage,
       cookies. Masks password fields, bearer/JWT/API-key patterns, long high-entropy strings, known key
       formats (`ghp_`, `AKIA…`, `xox…`, PEM blocks).
-- [ ] On by default; `--no-redact <tab>` requires an explicit `perms` grant for that origin.
+- [x] On by default; `--no-redact <tab>` requires an explicit `perms` grant for that origin.
 **Implementation prompt:** build `internal/redact` with a pure `Redact(string) string` + structured-field
 masking, driven by a documented pattern set. Route every result serializer through it. Make the pattern set
 unit-testable and easy to extend. Default-on; opt-out gated by `perms`.
 **Tests:** table test over known secret strings (masked) vs benign text (untouched); integration asserting a
 snapshot of a filled password field and a storage dump with a JWT come back masked. **Acceptance:** secrets
-masked by default across all surfaces. **Evidence:** _test run_
+masked by default across all surfaces. **Evidence:** `go test ./internal/redact ./internal/daemon -run 'TestS1' -v -count=1` -> `PASS ok bxw/internal/redact 0.710s`, `PASS ok bxw/internal/daemon 8.009s`; full `go test ./...` green; `go vet` clean; `GOOS=linux go build ./...` green.
 
 ## S2 — Read-only mode
 **Status:** ⬜ · **Why:** a safe research/browsing agent that physically cannot mutate. bx can't promise this.

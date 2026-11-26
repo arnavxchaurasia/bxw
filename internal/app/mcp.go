@@ -202,6 +202,16 @@ func argString(args map[string]any, k string) string {
 	}
 }
 
+func argBool(args map[string]any, k string) bool {
+	if b, ok := args[k].(bool); ok {
+		return b
+	}
+	if s, ok := args[k].(string); ok {
+		return s == "true" || s == "1"
+	}
+	return false
+}
+
 func mcpTools() []mcpTool {
 	return []mcpTool{
 		{
@@ -403,10 +413,11 @@ func mcpTools() []mcpTool {
 			InputSchema: map[string]any{
 				"type": "object",
 				"properties": map[string]any{
-					"tab":     str("Tab ID to read."),
-					"ref":     str("Optional snapshot ref (e.g. 'e12') or CSS selector to scope text extraction."),
-					"max":     number("Maximum characters to return before truncation (default 20000)."),
-					"browser": str("Browser name."),
+					"tab":       str("Tab ID to read."),
+					"ref":       str("Optional snapshot ref (e.g. 'e12') or CSS selector to scope text extraction."),
+					"max":       number("Maximum characters to return before truncation (default 20000)."),
+					"no_redact": boolean("Disable secret/PII redaction (requires permission grant for origin)."),
+					"browser":   str("Browser name."),
 				},
 				"required": []string{"tab"},
 			},
@@ -428,6 +439,9 @@ func mcpTools() []mcpTool {
 				if max > 0 {
 					readArgs["max"] = max
 				}
+				if argBool(args, "no_redact") {
+					readArgs["no_redact"] = true
+				}
 				data, err := daemon.Call(bName, "read", readArgs)
 				if err != nil {
 					return "", err
@@ -447,10 +461,11 @@ func mcpTools() []mcpTool {
 			InputSchema: map[string]any{
 				"type": "object",
 				"properties": map[string]any{
-					"tab":     str("Tab ID."),
-					"level":   str("Optional log level filter: 'info', 'warning', 'error', 'log'."),
-					"limit":   number("Max entries to return (default 50)."),
-					"browser": str("Browser name."),
+					"tab":       str("Tab ID."),
+					"level":     str("Optional log level filter: 'info', 'warning', 'error', 'log'."),
+					"limit":     number("Max entries to return (default 50)."),
+					"no_redact": boolean("Disable secret/PII redaction (requires permission grant for origin)."),
+					"browser":   str("Browser name."),
 				},
 				"required": []string{"tab"},
 			},
@@ -472,6 +487,9 @@ func mcpTools() []mcpTool {
 				if limit > 0 {
 					cArgs["limit"] = limit
 				}
+				if argBool(args, "no_redact") {
+					cArgs["no_redact"] = true
+				}
 				data, err := daemon.Call(bName, "console", cArgs)
 				if err != nil {
 					return "", err
@@ -489,6 +507,7 @@ func mcpTools() []mcpTool {
 					"filter":     str("Optional substring filter on request URL."),
 					"request_id": str("Optional request ID to fetch response body and details."),
 					"limit":      number("Max entries to return (default 50)."),
+					"no_redact":  boolean("Disable secret/PII redaction (requires permission grant for origin)."),
 					"browser":    str("Browser name."),
 				},
 				"required": []string{"tab"},
@@ -514,6 +533,9 @@ func mcpTools() []mcpTool {
 				if limit > 0 {
 					nArgs["limit"] = limit
 				}
+				if argBool(args, "no_redact") {
+					nArgs["no_redact"] = true
+				}
 				data, err := daemon.Call(bName, "network", nArgs)
 				if err != nil {
 					return "", err
@@ -527,8 +549,9 @@ func mcpTools() []mcpTool {
 			InputSchema: map[string]any{
 				"type": "object",
 				"properties": map[string]any{
-					"tab":     str("Tab ID."),
-					"browser": str("Browser name."),
+					"tab":       str("Tab ID."),
+					"no_redact": boolean("Disable secret/PII redaction (requires permission grant for origin)."),
+					"browser":   str("Browser name."),
 				},
 				"required": []string{"tab"},
 			},
@@ -537,9 +560,13 @@ func mcpTools() []mcpTool {
 				if err != nil {
 					return "", err
 				}
-				data, err := daemon.Call(bName, "storage", map[string]any{
+				sArgs := map[string]any{
 					"tab": argString(args, "tab"),
-				})
+				}
+				if argBool(args, "no_redact") {
+					sArgs["no_redact"] = true
+				}
+				data, err := daemon.Call(bName, "storage", sArgs)
 				if err != nil {
 					return "", err
 				}
@@ -577,12 +604,13 @@ func mcpTools() []mcpTool {
 			InputSchema: map[string]any{
 				"type": "object",
 				"properties": map[string]any{
-					"tab":     str("Tab ID from list_tabs or open."),
-					"browser": str("Browser name."),
-					"full":    boolean("Return full accessibility tree without diffing (default false)."),
-					"ref":     str("Optional element ref (e.g. 'e12') to scope snapshot to a subtree."),
-					"find":    str("Optional search string to return matching elements and ancestors."),
-					"budget":  number("Optional token budget to prune less salient subtrees with drill-down hints."),
+					"tab":       str("Tab ID from list_tabs or open."),
+					"browser":   str("Browser name."),
+					"full":      boolean("Return full accessibility tree without diffing (default false)."),
+					"ref":       str("Optional element ref (e.g. 'e12') to scope snapshot to a subtree."),
+					"find":      str("Optional search string to return matching elements and ancestors."),
+					"budget":    number("Optional token budget to prune less salient subtrees with drill-down hints."),
+					"no_redact": boolean("Disable secret/PII redaction (requires permission grant for origin)."),
 				},
 				"required": []string{"tab"},
 			},
@@ -601,6 +629,9 @@ func mcpTools() []mcpTool {
 				if b, ok := args["budget"].(float64); ok && b > 0 {
 					callArgs["budget"] = int(b)
 				}
+				if argBool(args, "no_redact") {
+					callArgs["no_redact"] = true
+				}
 				data, err := daemon.Call(bName, "snapshot", callArgs)
 				if err != nil {
 					return "", err
@@ -618,13 +649,14 @@ func mcpTools() []mcpTool {
 			InputSchema: map[string]any{
 				"type": "object",
 				"properties": map[string]any{
-					"tab":     str("Tab ID from list_tabs or open."),
-					"browser": str("Browser name."),
-					"role":    str("Optional ARIA role to filter (e.g. 'button', 'textbox', 'link')."),
-					"name":    str("Optional accessible name to match (exact or substring)."),
-					"text":    str("Optional text to match in name or value."),
-					"near":    str("Optional label or text of a nearby element to bias ranking by proximity."),
-					"limit":   number("Maximum number of results to return (default 10)."),
+					"tab":       str("Tab ID from list_tabs or open."),
+					"browser":   str("Browser name."),
+					"role":      str("Optional ARIA role to filter (e.g. 'button', 'textbox', 'link')."),
+					"name":      str("Optional accessible name to match (exact or substring)."),
+					"text":      str("Optional text to match in name or value."),
+					"near":      str("Optional label or text of a nearby element to bias ranking by proximity."),
+					"limit":     number("Maximum number of results to return (default 10)."),
+					"no_redact": boolean("Disable secret/PII redaction (requires permission grant for origin)."),
 				},
 				"required": []string{"tab"},
 			},
@@ -650,6 +682,9 @@ func mcpTools() []mcpTool {
 				}
 				if l, ok := args["limit"].(float64); ok && l > 0 {
 					callArgs["limit"] = int(l)
+				}
+				if argBool(args, "no_redact") {
+					callArgs["no_redact"] = true
 				}
 				data, err := daemon.Call(bName, "query", callArgs)
 				if err != nil {

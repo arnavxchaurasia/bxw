@@ -26,6 +26,8 @@ import (
 	"bxw/internal/contextmgr"
 	"bxw/internal/exit"
 	"bxw/internal/osport"
+	"bxw/internal/perms"
+	"bxw/internal/redact"
 )
 
 // Daemon manages the browser connection and handles client requests.
@@ -145,6 +147,7 @@ func (d *Daemon) handle(conn net.Conn) {
 	}
 
 	resp := d.dispatch(req)
+	resp = d.maybeRedact(req, resp)
 	_ = json.NewEncoder(conn).Encode(resp)
 }
 
@@ -717,6 +720,40 @@ func (d *Daemon) dispatch(req Request) Response {
 	default:
 		return Response{Error: fmt.Sprintf("unknown op %q", req.Op), Code: int(exit.Usage)}
 	}
+}
+
+func (d *Daemon) maybeRedact(req Request, resp Response) Response {
+	if resp.Error != "" || len(resp.Data) == 0 {
+		return resp
+	}
+
+	switch req.Op {
+	case "snapshot", "read", "query", "console", "network", "storage", "eval", "cdp":
+		// Outbound data from these ops is subject to secret/PII redaction
+	default:
+		return resp
+	}
+
+	noRedact, _ := req.Args["no_redact"].(bool)
+	if noRedact {
+		origin := ""
+		tabID, _ := req.Args["tab"].(string)
+		if tab, err := d.findTab(tabID); err == nil {
+			origin = perms.NormalizeOrigin(tab.URL)
+		}
+		if origin == "" {
+			origin = "about:blank"
+		}
+
+		allowed, _ := perms.Default().Check(origin, perms.CapNoRedact)
+		if !allowed {
+			return errorResponse(exit.New(exit.User, "no-redact requires permission grant for origin %q: run bxw perms grant %s no_redact", origin, origin))
+		}
+		return resp
+	}
+
+	resp.Data = redact.RedactJSON(resp.Data)
+	return resp
 }
 
 func (d *Daemon) findTab(tabID string) (Tab, error) {

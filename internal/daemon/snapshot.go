@@ -66,11 +66,11 @@ var skipRoles = map[string]bool{
 var boolProps = map[string]bool{
 	"focused": true, "disabled": true, "checked": true, "expanded": true,
 	"selected": true, "required": true, "readonly": true, "pressed": true,
-	"modal": true, "multiselectable": true,
+	"modal": true, "multiselectable": true, "password": true,
 }
 
 var leafRoles = map[string]bool{
-	"textbox": true, "searchbox": true, "spinbutton": true,
+	"textbox": true, "searchbox": true, "spinbutton": true, "password": true,
 }
 
 // buildSnapshot traverses an accessibility tree and assigns sequential e1, e2... refs.
@@ -109,6 +109,12 @@ func (b *snapBuilder) walk(n *accessibility.Node, depth int, parentName string) 
 
 	if role == "generic" && editable(n) {
 		role = "textbox"
+	}
+	for _, p := range n.Properties {
+		if p.Name == "password" && axString(p.Value) == "true" {
+			role = "password"
+			break
+		}
 	}
 
 	keep := !n.Ignored && !skipRoles[role] && role != ""

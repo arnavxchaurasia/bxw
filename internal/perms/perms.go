@@ -20,6 +20,7 @@ const (
 	CapDownload         = "download"
 	CapEnterCredentials = "enter_credentials"
 	CapCrossOriginNav   = "cross_origin_nav"
+	CapNoRedact         = "no_redact"
 )
 
 // State constants.
@@ -82,7 +83,7 @@ func NormalizeOrigin(rawURL string) string {
 // IsGated reports whether a capability is gated by risk policies.
 func IsGated(capability string) bool {
 	switch strings.ToLower(capability) {
-	case CapFormSubmit, CapPurchase, CapDelete, CapDownload, CapEnterCredentials, CapCrossOriginNav:
+	case CapFormSubmit, CapPurchase, CapDelete, CapDownload, CapEnterCredentials, CapCrossOriginNav, CapNoRedact:
 		return true
 	default:
 		return false

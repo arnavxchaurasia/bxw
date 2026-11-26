@@ -364,11 +364,14 @@ func runSnapshot(args []string) error {
 	var browserName, outFile, scopeRef, findQuery string
 	full := false
 	budget := 0
+	noRedact := false
 
 	for i := 0; i < len(args); i++ {
 		switch args[i] {
 		case "--full":
 			full = true
+		case "--no-redact":
+			noRedact = true
 		case "--budget":
 			if i+1 < len(args) {
 				budget, _ = strconv.Atoi(args[i+1])
@@ -430,6 +433,9 @@ func runSnapshot(args []string) error {
 	if budget > 0 {
 		callArgs["budget"] = budget
 	}
+	if noRedact {
+		callArgs["no_redact"] = true
+	}
 
 	data, err := daemon.Call(name, "snapshot", callArgs)
 	if err != nil {
@@ -459,9 +465,12 @@ func runQuery(args []string) error {
 	var browserName, role, name, text, near string
 	var limit int
 	var jsonOutput bool
+	var noRedact bool
 
 	for i := 0; i < len(args); i++ {
 		switch args[i] {
+		case "--no-redact":
+			noRedact = true
 		case "--browser":
 			if i+1 < len(args) {
 				browserName = args[i+1]
@@ -513,6 +522,9 @@ func runQuery(args []string) error {
 
 	callArgs := map[string]any{
 		"tab": tab,
+	}
+	if noRedact {
+		callArgs["no_redact"] = true
 	}
 	if role != "" {
 		callArgs["role"] = role
@@ -1482,9 +1494,12 @@ func runRead(args []string) error {
 	var browserName string
 	var ref string
 	var max int
+	var noRedact bool
 
 	for i := 0; i < len(args); i++ {
 		switch args[i] {
+		case "--no-redact":
+			noRedact = true
 		case "--browser":
 			if i+1 < len(args) {
 				browserName = args[i+1]
@@ -1526,6 +1541,9 @@ func runRead(args []string) error {
 
 	readArgs := map[string]any{
 		"tab": tab,
+	}
+	if noRedact {
+		readArgs["no_redact"] = true
 	}
 	if ref != "" {
 		readArgs["ref"] = ref
@@ -1616,9 +1634,12 @@ func runConsole(args []string) error {
 	var pos []string
 	var browserName, level string
 	var limit int
+	var noRedact bool
 
 	for i := 0; i < len(args); i++ {
 		switch args[i] {
+		case "--no-redact":
+			noRedact = true
 		case "--browser":
 			if i+1 < len(args) {
 				browserName = args[i+1]
@@ -1658,6 +1679,9 @@ func runConsole(args []string) error {
 	}
 
 	cArgs := map[string]any{"tab": tab}
+	if noRedact {
+		cArgs["no_redact"] = true
+	}
 	if level != "" {
 		cArgs["level"] = level
 	}
@@ -1701,9 +1725,12 @@ func runNetwork(args []string) error {
 	var pos []string
 	var browserName, filter, reqID string
 	var limit int
+	var noRedact bool
 
 	for i := 0; i < len(args); i++ {
 		switch args[i] {
+		case "--no-redact":
+			noRedact = true
 		case "--browser":
 			if i+1 < len(args) {
 				browserName = args[i+1]
@@ -1750,6 +1777,9 @@ func runNetwork(args []string) error {
 	}
 
 	nArgs := map[string]any{"tab": tab}
+	if noRedact {
+		nArgs["no_redact"] = true
+	}
 	if filter != "" {
 		nArgs["filter"] = filter
 	}
@@ -1809,6 +1839,7 @@ func runNetwork(args []string) error {
 func runStorage(args []string) error {
 	var pos []string
 	var browserName string
+	var noRedact bool
 
 	for i := 0; i < len(args); i++ {
 		switch args[i] {
@@ -1817,6 +1848,8 @@ func runStorage(args []string) error {
 				browserName = args[i+1]
 				i++
 			}
+		case "--no-redact":
+			noRedact = true
 		default:
 			if strings.HasPrefix(args[i], "--browser=") {
 				browserName = strings.TrimPrefix(args[i], "--browser=")
@@ -1827,7 +1860,7 @@ func runStorage(args []string) error {
 	}
 
 	if len(pos) < 1 {
-		return exit.New(exit.Usage, "usage: bxw storage <tab> [--browser <name>]")
+		return exit.New(exit.Usage, "usage: bxw storage <tab> [--browser <name>] [--no-redact]")
 	}
 
 	tab := pos[0]
@@ -1836,7 +1869,12 @@ func runStorage(args []string) error {
 		return err
 	}
 
-	data, err := daemon.Call(name, "storage", map[string]any{"tab": tab})
+	callArgs := map[string]any{"tab": tab}
+	if noRedact {
+		callArgs["no_redact"] = true
+	}
+
+	data, err := daemon.Call(name, "storage", callArgs)
 	if err != nil {
 		return err
 	}
