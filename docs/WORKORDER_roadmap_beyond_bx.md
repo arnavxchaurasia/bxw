@@ -98,8 +98,8 @@ If §1 shows drift (dashboard ahead of git/tests), your first commit of the sess
 | C3 | Token-budgeted / progressive snapshots | 1 Context | ✅ | ✅ | ✅ | ✅ | ✅ |
 | C4 | Region memoization (stable-region caching) | 1 Context | ✅ | ✅ | ✅ | ✅ | ✅ |
 | C5 | Episodic recall (queryable session memory) | 1 Context | ✅ | ✅ | ✅ | ✅ | ✅ |
-| R1 | Smart wait conditions (auto-waiting) | 2 Reliability | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
-| R2 | Auto-reconnect / self-heal daemon | 2 Reliability | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
+| R1 | Smart wait conditions (auto-waiting) | 2 Reliability | ✅ | ✅ | ✅ | ✅ | ✅ |
+| R2 | Auto-reconnect / self-heal daemon | 2 Reliability | ✅ | ✅ | ✅ | ✅ | ✅ |
 | S1 | Secret / PII redaction layer | 3 Safety | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
 | S2 | Read-only mode | 3 Safety | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
 | S3 | Dry-run / preview for mutations | 3 Safety | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |

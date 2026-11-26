@@ -7,7 +7,7 @@ them in and the dependencies between them.** Do not re-spec here — follow the 
 
 **Done already (do not rebuild):** F1 stable semantic refs ✅, F2 durable session state model ✅ (Phase 0).
 **C1 ranked retrieval / query API ✅** (Phase 1 #1) — commit `fc79f60`, verified: CI green (ubuntu + windows),
-`verify-roadmap` OK, real headless-browser integration test. **Phase 1 (C1–C5) complete ✅ — next up: R1 (Phase 2).**
+`verify-roadmap` OK, real headless-browser integration test. **Phases 1–2 (C1–C5, R1–R2) complete ✅ — next up: S1 (Phase 3, the redaction gate).**
 
 ## Rules (same as the roadmap — enforced)
 
@@ -42,10 +42,10 @@ also bxw's strongest trust differentiator over bx — consider pulling it forwar
 1. ✅ **C1** — ranked retrieval — **DONE** (`fc79f60`, CI green, verify-roadmap OK)
 2. ✅ **C2 · C3 · C4** — context/token-efficiency — **DONE**
 3. ✅ **C5** — episodic recall + close-out — **DONE** (Phase 1 complete)
-4. **R1** — smart wait conditions (needed by X1)
+4. ✅ **R1** — smart wait conditions — **DONE**
 5. **S1** ★ — redaction (gate for Phase 5 + X3; the trust feature — do it before any DevTools work)
 6. **S2** — read-only mode (gate for Phase 5 mutations)
-7. **R2 · S3** — self-heal daemon · dry-run preview (independent; slot in anytime after their phase opens)
+7. ✅ **R2** — self-heal daemon — **DONE** · **S3** — dry-run preview (pending; slot in anytime)
 8. **X1 · X2 · X3** — record/replay (needs F1 + R1) · assertions · event stream (needs S1)
 9. **D1 → D2 → D3 → D4 → D5** — DevTools expansion (all need S1; mutating ones need S2)
 
@@ -101,6 +101,6 @@ also bxw's strongest trust differentiator over bx — consider pulling it forwar
 
 ## Next action for the implementation model
 
-C1–C5 are ✅ (`verify-roadmap` OK, tests green) — **Phase 1 is complete.**
+C1–C5 and R1–R2 are ✅ (`verify-roadmap` OK, tests green) — **Phases 1–2 are complete.**
 Resume per the roadmap's anti-drift §1 (`git log`, `go test ./...`, `scripts/verify-roadmap.sh` — reality wins over the dashboard),
-then start **R1** (WIP = 1) — smart wait conditions (Phase 2; needed by X1).
+then start **S1** (WIP = 1) — secret / PII redaction (Phase 3; the trust feature and the gate for all of Phase 5).
