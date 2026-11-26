@@ -9,6 +9,7 @@ covers those). Do them in order: **A → B → C** (B would fail CI until A land
 | A | gofmt the 16 committed files that aren't formatted | trivial/hygiene | ✅ |
 | B | Add a gofmt gate to CI so it can never regress | low (prevents recurrence) | ✅ |
 | C | Fix the agent-browser launch port race ("CDP did not come up") | **real reliability bug** | ✅ |
+| D | Harden verify-roadmap to fail on "built but dashboard row left ⬜" | low (anti-drift) | ☐ |
 
 > Already done (do not redo): `semantic_test.go` alignment fixed in `5bbfc08`. The C1 `--find` role-match
 > carry-forward was resolved in `39a8859`.
@@ -96,6 +97,28 @@ contend. (They currently `os.FindProcess(...).Kill()` without waiting.)
 green on both OSes. **Commit:** `fix(daemon): launch with --remote-debugging-port=0 + read DevToolsActivePort (kill the port race)`.
 
 ---
+
+## FIX-D — verify-roadmap: fail loud on "built but not ticked" drift
+
+**Problem:** `scripts/verify-roadmap.sh` audits only one direction — every dashboard row marked ✅ must have an
+ID-named commit. It does **not** check the reverse: that every feature-ID commit has a ✅ dashboard row. So a
+feature that is built, committed and CI-green but whose dashboard row is left ⬜ passes the audit silently.
+This has already happened three times (C5, R1, R2) — the reviewer caught each by hand and reconciled it. The
+anti-drift gate should catch it, not a human.
+
+**Fix:** add a reverse check to `verify-roadmap.sh`. For every commit on the branch whose subject matches the
+feature-commit convention `feat(<scope>): <ID> …` where `<ID>` is `F\d+|C\d+|R\d+|S\d+|X\d+|D\d+`, assert the
+dashboard row for `<ID>` exists and its **Status** cell (the last `|`-delimited column of the `| <ID> | … |`
+row) is `✅`. If a feature-ID commit exists but its row is `⬜`/`🔄`/absent, print the offending IDs and
+`exit 1`. Keep the existing forward check; document both directions in the script header.
+
+**Watch for:** the scope varies by phase (`feat(context): C3 …`, `feat(reliability): R1 …`, later
+`feat(safety): S1 …`) — match on the `<ID>` token, not the scope. Read the Status from the row's final cell.
+Ignore merge/docs/style/ci commits. Don't double-count a feature that has several commits.
+
+**Acceptance:** with the repo as-is (F1/F2, C1–C5, R1–R2 all ✅) the audit still prints `VERIFY OK`. A throwaway
+`feat(context): C9 test` commit with **no** C9 row (or a `⬜` one) makes the audit fail naming C9; drop the
+throwaway after. **Commit:** `ci(roadmap): verify-roadmap fails on a feature commit without a ✅ row`.
 
 ## Definition of done (all three)
 
