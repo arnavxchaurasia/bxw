@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"bxw/internal/browser"
 	"bxw/internal/cache"
@@ -331,16 +332,20 @@ func mcpTools() []mcpTool {
 		},
 		{
 			Name:        "wait",
-			Description: "Wait for a condition in a tab (DOM selector, text content, page load completion, or sleep ms).",
+			Description: "Wait for a condition in a tab (DOM selector, text content, element removal, DOM stability, network idle, page load completion, or sleep ms).",
 			InputSchema: map[string]any{
 				"type": "object",
 				"properties": map[string]any{
-					"tab":      str("Tab ID to wait on."),
-					"selector": str("Wait until element matching CSS selector or ref is present."),
-					"text":     str("Wait until text appears on page."),
-					"load":     boolean("Wait until document.readyState === 'complete'."),
-					"ms":       number("Sleep for specified milliseconds."),
-					"browser":  str("Browser name."),
+					"tab":          str("Tab ID to wait on."),
+					"selector":     str("Wait until element matching CSS selector or ref is present."),
+					"text":         str("Wait until text appears on page."),
+					"gone":         str("Wait until element matching CSS selector or ref is removed/detached."),
+					"stable":       boolean("Wait until DOM mutations quiet down for 100ms."),
+					"network_idle": boolean("Wait until 0 network requests in-flight for 500ms."),
+					"load":         boolean("Wait until document.readyState === 'complete'."),
+					"ms":           number("Sleep for specified milliseconds."),
+					"timeout":      str("Timeout duration (e.g. '5s', '10s')."),
+					"browser":      str("Browser name."),
 				},
 				"required": []string{"tab"},
 			},
@@ -350,6 +355,8 @@ func mcpTools() []mcpTool {
 					return "", err
 				}
 				load, _ := args["load"].(bool)
+				stable, _ := args["stable"].(bool)
+				netIdle, _ := args["network_idle"].(bool)
 				var ms int
 				if m, ok := args["ms"].(float64); ok {
 					ms = int(m)
@@ -363,11 +370,25 @@ func mcpTools() []mcpTool {
 				if t := argString(args, "text"); t != "" {
 					waitArgs["text"] = t
 				}
+				if g := argString(args, "gone"); g != "" {
+					waitArgs["gone"] = g
+				}
+				if stable {
+					waitArgs["stable"] = true
+				}
+				if netIdle {
+					waitArgs["network_idle"] = true
+				}
 				if load {
 					waitArgs["load"] = true
 				}
 				if ms > 0 {
 					waitArgs["ms"] = ms
+				}
+				if toStr := argString(args, "timeout"); toStr != "" {
+					if dur, err := time.ParseDuration(toStr); err == nil {
+						waitArgs["timeout_ms"] = int(dur.Milliseconds())
+					}
 				}
 				data, err := daemon.Call(bName, "wait", waitArgs)
 				if err != nil {
@@ -679,6 +700,7 @@ func mcpTools() []mcpTool {
 					"tab":     str("Tab ID."),
 					"element": str("Ref from latest snapshot (e.g. 'e12') or CSS selector."),
 					"double":  boolean("Double-click when true."),
+					"wait":    boolean("Auto-wait for element actionability (visible, attached, enabled) before clicking."),
 					"browser": str("Browser name."),
 				},
 				"required": []string{"tab", "element"},
@@ -689,10 +711,12 @@ func mcpTools() []mcpTool {
 					return "", err
 				}
 				double, _ := args["double"].(bool)
+				wait, _ := args["wait"].(bool)
 				data, err := daemon.Call(bName, "click", map[string]any{
 					"tab":      argString(args, "tab"),
 					"selector": argString(args, "element"),
 					"double":   double,
+					"wait":     wait,
 				})
 				if err != nil {
 					return "", err
@@ -859,6 +883,7 @@ func mcpTools() []mcpTool {
 					"tab":     str("Tab ID."),
 					"element": str("Ref (e.g. 'e12') or CSS selector."),
 					"value":   str("Value to insert, select option text/value, or 'true'/'false' for checkboxes."),
+					"wait":    boolean("Auto-wait for element actionability (visible, attached, enabled) before filling."),
 					"browser": str("Browser name."),
 				},
 				"required": []string{"tab", "element", "value"},
@@ -870,9 +895,11 @@ func mcpTools() []mcpTool {
 				}
 				pairs := [][2]string{{argString(args, "element"), argString(args, "value")}}
 				pairsJSON, _ := json.Marshal(pairs)
+				wait, _ := args["wait"].(bool)
 				data, err := daemon.Call(bName, "fill", map[string]any{
 					"tab":   argString(args, "tab"),
 					"pairs": string(pairsJSON),
+					"wait":  wait,
 				})
 				if err != nil {
 					return "", err

@@ -296,6 +296,56 @@ func (d *Daemon) query(tabID string, params QueryParams, timeout time.Duration) 
 	return res, nil
 }
 
+// waitActionable verifies an element is attached, visible, stable, and enabled (Playwright-style actionability).
+func waitActionable(ctx context.Context, sess *tabSession, el string, timeout time.Duration) error {
+	sel, err := sess.selector(ctx, el)
+	if err != nil {
+		return err
+	}
+	q, _ := json.Marshal(sel)
+	script := fmt.Sprintf(`(() => {
+		const el = document.querySelector(%s);
+		if (!el) return {ok: false, reason: "not attached to DOM"};
+		const r = el.getBoundingClientRect();
+		const style = window.getComputedStyle(el);
+		if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') {
+			return {ok: false, reason: "element is hidden"};
+		}
+		if (r.width <= 0 || r.height <= 0) {
+			return {ok: false, reason: "element has zero size"};
+		}
+		if (el.disabled) {
+			return {ok: false, reason: "element is disabled"};
+		}
+		return {ok: true};
+	})()`, q)
+
+	ticker := time.NewTicker(50 * time.Millisecond)
+	defer ticker.Stop()
+
+	var lastReason string
+	for {
+		var res struct {
+			OK     bool   `json:"ok"`
+			Reason string `json:"reason"`
+		}
+		if err := sess.eval(ctx, script, &res); err == nil && res.OK {
+			return nil
+		} else if err == nil {
+			lastReason = res.Reason
+		}
+
+		select {
+		case <-ctx.Done():
+			if lastReason != "" {
+				return exit.New(exit.User, "element %q is not actionable: %s (waited %s)", el, lastReason, timeout)
+			}
+			return exit.New(exit.User, "element %q is not actionable (waited %s)", el, timeout)
+		case <-ticker.C:
+		}
+	}
+}
+
 func center(ctx context.Context, sess *tabSession, el string, timeout time.Duration) (float64, float64, error) {
 	sel, err := sess.selector(ctx, el)
 	if err != nil {
@@ -451,8 +501,13 @@ func (d *Daemon) upload(tabID, el string, paths []string, timeout time.Duration)
 	})
 }
 
-func (d *Daemon) click(tabID, el string, double bool, timeout time.Duration) (ActResult, error) {
+func (d *Daemon) click(tabID, el string, double, wait bool, timeout time.Duration) (ActResult, error) {
 	return d.actOn(tabID, timeout, func(ctx context.Context, sess *tabSession) error {
+		if wait {
+			if err := waitActionable(ctx, sess, el, timeout); err != nil {
+				return err
+			}
+		}
 		x, y, err := moveMouse(ctx, sess, el, timeout)
 		if err != nil {
 			return err
@@ -508,12 +563,17 @@ func (d *Daemon) click(tabID, el string, double bool, timeout time.Duration) (Ac
 	})
 }
 
-func (d *Daemon) fill(tabID string, pairs [][2]string, timeout time.Duration) (ActResult, error) {
+func (d *Daemon) fill(tabID string, pairs [][2]string, wait bool, timeout time.Duration) (ActResult, error) {
 	if len(pairs) == 0 {
 		return ActResult{}, exit.New(exit.Validation, "fill requires an element and a value")
 	}
 	return d.actOn(tabID, timeout, func(ctx context.Context, sess *tabSession) error {
 		for _, p := range pairs {
+			if wait {
+				if err := waitActionable(ctx, sess, p[0], timeout); err != nil {
+					return err
+				}
+			}
 			if err := fillOne(ctx, sess, p[0], p[1], timeout); err != nil {
 				return err
 			}

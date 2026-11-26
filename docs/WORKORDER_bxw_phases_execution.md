@@ -68,7 +68,7 @@ also bxw's strongest trust differentiator over bx — consider pulling it forwar
 
 | ID | Build | Plugs in | Depends | Acceptance |
 |----|-------|----------|---------|------------|
-| **R1** | Smart waits: `--selector`/`--text`/`--gone`/`--stable`/`--network-idle`/`--load`/`--ms`, each `--timeout`; optional auto-wait before act | `bxw wait` + `actOn` opt-in | — | delayed-element fixture: `--selector` waits & succeeds, `--gone` waits for removal, timeout names the unmet condition |
+| ✅ **R1** | Smart waits: `--selector`/`--text`/`--gone`/`--stable`/`--network-idle`/`--load`/`--ms`, each `--timeout`; optional auto-wait before act | `bxw wait` + `actOn` opt-in | — | **DONE** — delayed-element fixture: `--selector` waits & succeeds, `--gone` waits for removal, timeout names the unmet condition |
 | **R2** | Self-heal: on CDP read-loop error, bounded reconnect (backoff+jitter) re-resolving target via F2; typed error only after retries exhausted; log attempts | wrap `TabConn` dial/read | F2 | drop the ws mid-session → reconnect restores a working session; permanent failure returns typed `exit.Upstream` |
 
 ## PHASE 3 — Safety & trust (S1 before Phase 5) — roadmap §Phase 3

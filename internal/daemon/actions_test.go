@@ -134,13 +134,13 @@ func runLiveActionsOnBrowser(t *testing.T, targetBrowser browser.Browser) {
 	}
 
 	// 4. Fill textbox with "Alice"
-	_, err = d.fill(tabID, [][2]string{{inputRef, "Alice"}}, 10*time.Second)
+	_, err = d.fill(tabID, [][2]string{{inputRef, "Alice"}}, false, 10*time.Second)
 	if err != nil {
 		t.Fatalf("fill %s: %v", inputRef, err)
 	}
 
 	// 5. Click submit button
-	_, err = d.click(tabID, buttonRef, false, 10*time.Second)
+	_, err = d.click(tabID, buttonRef, false, false, 10*time.Second)
 	if err != nil {
 		t.Fatalf("click %s: %v", buttonRef, err)
 	}
@@ -166,7 +166,7 @@ func runLiveActionsOnBrowser(t *testing.T, targetBrowser browser.Browser) {
 	t.Logf("Success! Live browser action verified. Result: %s", resultText)
 
 	// Test L4: fill on date/time picker input
-	_, err = d.fill(tabID, [][2]string{{"#time-input", "14:30"}}, 10*time.Second)
+	_, err = d.fill(tabID, [][2]string{{"#time-input", "14:30"}}, false, 10*time.Second)
 	if err != nil {
 		t.Fatalf("fill #time-input: %v", err)
 	}

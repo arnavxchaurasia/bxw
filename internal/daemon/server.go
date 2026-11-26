@@ -270,6 +270,12 @@ func (d *Daemon) dispatch(req Request) Response {
 		tab, _ := req.Args["tab"].(string)
 		selector, _ := req.Args["selector"].(string)
 		text, _ := req.Args["text"].(string)
+		gone, _ := req.Args["gone"].(string)
+		stable, _ := req.Args["stable"].(bool)
+		netIdle, _ := req.Args["network_idle"].(bool)
+		if !netIdle {
+			netIdle, _ = req.Args["networkIdle"].(bool)
+		}
 		load, _ := req.Args["load"].(bool)
 		var ms int
 		if msVal, ok := req.Args["ms"].(float64); ok {
@@ -278,10 +284,13 @@ func (d *Daemon) dispatch(req Request) Response {
 			ms = msInt
 		}
 		cond := waitCond{
-			Selector: selector,
-			Text:     text,
-			Load:     load,
-			MS:       ms,
+			Selector:    selector,
+			Text:        text,
+			Gone:        gone,
+			Stable:      stable,
+			NetworkIdle: netIdle,
+			Load:        load,
+			MS:          ms,
 		}
 		res, err := d.wait(tab, cond, timeout)
 		if err != nil {
@@ -393,7 +402,8 @@ func (d *Daemon) dispatch(req Request) Response {
 		tab, _ := req.Args["tab"].(string)
 		sel, _ := req.Args["selector"].(string)
 		double, _ := req.Args["double"].(bool)
-		res, err := d.click(tab, sel, double, timeout)
+		wait, _ := req.Args["wait"].(bool)
+		res, err := d.click(tab, sel, double, wait, timeout)
 		if err != nil {
 			return errorResponse(err)
 		}
@@ -447,7 +457,8 @@ func (d *Daemon) dispatch(req Request) Response {
 		if raw, ok := req.Args["pairs"].(string); ok {
 			_ = json.Unmarshal([]byte(raw), &pairs)
 		}
-		res, err := d.fill(tab, pairs, timeout)
+		wait, _ := req.Args["wait"].(bool)
+		res, err := d.fill(tab, pairs, wait, timeout)
 		if err != nil {
 			return errorResponse(err)
 		}
@@ -767,13 +778,14 @@ func (d *Daemon) tabSession(tabID string) (*tabSession, error) {
 	_, _ = cdp.Call(ctx, tc, network.Enable, network.EnableParams{})
 
 	sess := &tabSession{
-		id:         tab.ID,
-		wsURL:      tab.WS,
-		conn:       tc,
-		refs:       make(map[string]cdp.BackendNodeID),
-		refDescs:   make(map[string]RefDescriptor),
-		consoleBuf: newRingBuffer(500),
-		netBuf:     newRingBuffer(500),
+		id:           tab.ID,
+		wsURL:        tab.WS,
+		conn:         tc,
+		refs:         make(map[string]cdp.BackendNodeID),
+		refDescs:     make(map[string]RefDescriptor),
+		consoleBuf:   newRingBuffer(500),
+		netBuf:       newRingBuffer(500),
+		inFlightReqs: make(map[network.RequestID]time.Time),
 	}
 	sess.watchDialogs(context.Background())
 	sess.startDebugCapture(context.Background())

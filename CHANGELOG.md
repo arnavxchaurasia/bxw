@@ -8,6 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **R1: Smart wait conditions and actionability auto-waiting (`bxw wait`, `click --wait`, `fill --wait`).**
+  Extended `bxw wait` with web-first predicates: `--gone <selector|ref>` (waits for removal/detachment),
+  `--stable` (waits for DOM mutations to quiet down for 100ms via `MutationObserver`), and
+  `--network-idle` (tracks in-flight CDP Network requests until 0 in-flight for 500ms).
+  Wait failures return clean, typed timeout errors explicitly naming the unmet condition.
+  Added optional `--wait` flag to `click` and `fill` CLI verbs and `wait` parameter to MCP tools
+  for auto-waiting on element actionability (attached, visible, non-zero size, enabled).
 - **C5: Episodic recall + close-out distillation (`bxw recall`, `bxw done`).**
   Episodic memory timeline merging dated notes (`context/<session>.md`) and navigation
   history (`history/<browser>.jsonl`) into a compact, deduplicated timeline ranked

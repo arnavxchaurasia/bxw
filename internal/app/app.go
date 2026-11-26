@@ -128,7 +128,9 @@ usage:
   bxw open <url> [--profile <name>] [--follow]   open url in named profile window
   bxw close-tab <tab>                 close one tab
   bxw goto <tab> <url> [--follow]     navigate the current tab (vs open = new tab)
-  bxw wait <tab> [--selector s|--text t|--load|--ms N]   wait for a condition
+  bxw wait <tab> [flags]              wait for a condition
+                                      flags: --selector <s>, --text <t>, --gone <sel>, --stable,
+                                             --network-idle, --load, --ms <N>, --timeout <dur>
   bxw read <tab> [--ref e12] [--max 20000]   read the page's visible text
   bxw dialog <tab> <accept|dismiss> [--text t] respond to a JavaScript dialog
   bxw console <tab> [--level lvl] [--limit N]  tail page console and error logs
@@ -145,11 +147,11 @@ usage:
                                       flags: --role <r>, --name <n>, --text <t>, --near <label>, --limit <k>, --json
   bxw screenshot <tab> [flags]        capture viewport PNG, saving to cache (prints bxw://cache link)
                                       flags: --out <file>
-  bxw click <tab> <ref|sel> [--double] [--verbose] click an element by ref or CSS selector
+  bxw click <tab> <ref|sel> [--double] [--wait] [--verbose] click an element by ref or CSS selector
   bxw hover <tab> <ref|sel> [--verbose] hover over an element by ref or CSS selector
   bxw drag <tab> <from> <to> [--verbose] drag element to destination element
   bxw upload <tab> <ref|sel> <file>.. [--verbose] set files on an input[type=file] element
-  bxw fill <tab> <ref|sel> <val>... [--verbose] fill form inputs, selects, or toggles
+  bxw fill <tab> <ref|sel> <val>... [--wait] [--verbose] fill form inputs, selects, or toggles
   bxw type <tab> <text> [--submit <k>] [--verbose] type text into active element
   bxw key <tab> <combo> [--verbose]   press key or combination (e.g. Enter, Control+A)
   bxw eval <tab> <expr>               evaluate JavaScript on the tab
@@ -611,12 +613,15 @@ func runClick(args []string) error {
 	var pos []string
 	var browserName string
 	double := false
+	wait := false
 	verbose := false
 
 	for i := 0; i < len(args); i++ {
 		switch args[i] {
 		case "--double":
 			double = true
+		case "--wait":
+			wait = true
 		case "--verbose":
 			verbose = true
 		case "--browser":
@@ -634,7 +639,7 @@ func runClick(args []string) error {
 	}
 
 	if len(pos) < 2 {
-		return exit.New(exit.Usage, "usage: bxw click <tab> <element> [--double] [--verbose]")
+		return exit.New(exit.Usage, "usage: bxw click <tab> <element> [--double] [--wait] [--verbose]")
 	}
 
 	name, err := resolveBrowser(browserName)
@@ -646,6 +651,7 @@ func runClick(args []string) error {
 		"tab":      pos[0],
 		"selector": pos[1],
 		"double":   double,
+		"wait":     wait,
 	})
 	if err != nil {
 		return err
@@ -846,10 +852,13 @@ func runUpload(args []string) error {
 func runFill(args []string) error {
 	var pos []string
 	var browserName string
+	wait := false
 	verbose := false
 
 	for i := 0; i < len(args); i++ {
 		switch args[i] {
+		case "--wait":
+			wait = true
 		case "--verbose":
 			verbose = true
 		case "--browser":
@@ -867,7 +876,7 @@ func runFill(args []string) error {
 	}
 
 	if len(pos) < 3 || len(pos)%2 != 1 {
-		return exit.New(exit.Usage, "usage: bxw fill <tab> <element> <value> [<element> <value> ...] [--verbose]")
+		return exit.New(exit.Usage, "usage: bxw fill <tab> <element> <value> [<element> <value> ...] [--wait] [--verbose]")
 	}
 
 	tab := pos[0]
@@ -885,6 +894,7 @@ func runFill(args []string) error {
 	data, err := daemon.Call(name, "fill", map[string]any{
 		"tab":   tab,
 		"pairs": string(pairsJSON),
+		"wait":  wait,
 	})
 	if err != nil {
 		return err
@@ -1322,6 +1332,9 @@ func runWait(args []string) error {
 	var browserName string
 	var selector string
 	var text string
+	var gone string
+	var stable bool
+	var netIdle bool
 	var load bool
 	var ms int
 	var timeoutStr string
@@ -1343,6 +1356,15 @@ func runWait(args []string) error {
 				text = args[i+1]
 				i++
 			}
+		case "--gone":
+			if i+1 < len(args) {
+				gone = args[i+1]
+				i++
+			}
+		case "--stable":
+			stable = true
+		case "--network-idle", "--network_idle":
+			netIdle = true
 		case "--load":
 			load = true
 		case "--ms":
@@ -1362,6 +1384,8 @@ func runWait(args []string) error {
 				selector = strings.TrimPrefix(args[i], "--selector=")
 			} else if strings.HasPrefix(args[i], "--text=") {
 				text = strings.TrimPrefix(args[i], "--text=")
+			} else if strings.HasPrefix(args[i], "--gone=") {
+				gone = strings.TrimPrefix(args[i], "--gone=")
 			} else if strings.HasPrefix(args[i], "--ms=") {
 				fmt.Sscanf(strings.TrimPrefix(args[i], "--ms="), "%d", &ms)
 			} else if strings.HasPrefix(args[i], "--timeout=") {
@@ -1373,7 +1397,7 @@ func runWait(args []string) error {
 	}
 
 	if len(pos) < 1 {
-		return exit.New(exit.Usage, "usage: bxw wait <tab> [--selector s|--text t|--load|--ms N] [--timeout <dur>] [--browser <name>]")
+		return exit.New(exit.Usage, "usage: bxw wait <tab> [--selector s|--text t|--gone s|--stable|--network-idle|--load|--ms N] [--timeout <dur>] [--browser <name>]")
 	}
 
 	tab := pos[0]
@@ -1385,6 +1409,15 @@ func runWait(args []string) error {
 	if text != "" {
 		count++
 	}
+	if gone != "" {
+		count++
+	}
+	if stable {
+		count++
+	}
+	if netIdle {
+		count++
+	}
 	if load {
 		count++
 	}
@@ -1392,7 +1425,7 @@ func runWait(args []string) error {
 		count++
 	}
 	if count != 1 {
-		return exit.New(exit.Usage, "exactly one of --selector, --text, --load, or --ms must be specified")
+		return exit.New(exit.Usage, "exactly one of --selector, --text, --gone, --stable, --network-idle, --load, or --ms must be specified")
 	}
 
 	name, err := resolveBrowser(browserName)
@@ -1415,6 +1448,15 @@ func runWait(args []string) error {
 	}
 	if text != "" {
 		waitArgs["text"] = text
+	}
+	if gone != "" {
+		waitArgs["gone"] = gone
+	}
+	if stable {
+		waitArgs["stable"] = true
+	}
+	if netIdle {
+		waitArgs["network_idle"] = true
 	}
 	if load {
 		waitArgs["load"] = true

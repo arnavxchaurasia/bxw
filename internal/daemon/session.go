@@ -14,6 +14,7 @@ import (
 	"github.com/chromedp/cdproto/cdp"
 	jsonv2 "github.com/chromedp/cdproto/cdp/jsonv2"
 	"github.com/chromedp/cdproto/dom"
+	"github.com/chromedp/cdproto/network"
 	"github.com/chromedp/cdproto/page"
 	"github.com/chromedp/cdproto/runtime"
 	"github.com/coder/websocket"
@@ -202,6 +203,10 @@ type tabSession struct {
 
 	consoleBuf *ringBuffer
 	netBuf     *ringBuffer
+
+	// R1: Track in-flight network requests for network-idle condition
+	netMu        sync.Mutex
+	inFlightReqs map[network.RequestID]time.Time
 }
 
 func (sess *tabSession) watchDialogs(ctx context.Context) {

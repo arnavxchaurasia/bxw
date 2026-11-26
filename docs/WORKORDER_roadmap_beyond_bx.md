@@ -309,18 +309,18 @@ durable close-out. **Evidence:** `go test ./internal/daemon -run 'TestC5' -v -co
 # ════════ PHASE 2 — RELIABILITY ════════
 
 ## R1 — Smart wait conditions
-**Status:** ⬜ · **Why:** kills the "acted too early" flake class; `wait` exists but needs real conditions.
+**Status:** ✅ · **Why:** kills the "acted too early" flake class; `wait` exists but needs real conditions.
 **Industry practice:** Playwright auto-waiting / web-first actionability (visible, stable, enabled), network-idle.
 **Checklist**
-- [ ] `bxw wait <tab>` supports: `--selector`/`--text` (appears), `--gone` (disappears), `--stable` (DOM quiet),
+- [x] `bxw wait <tab>` supports: `--selector`/`--text` (appears), `--gone` (disappears), `--stable` (DOM quiet),
       `--network-idle`, `--load`, `--ms`, each with `--timeout`.
-- [ ] `actOn` optionally auto-waits for actionability before clicking/filling (opt-in flag).
+- [x] `actOn` optionally auto-waits for actionability before clicking/filling (opt-in flag).
 **Implementation prompt:** implement conditions as polled predicates with a deadline (reuse `settle`/`stableDOMJS`).
 Network-idle via CDP Network events (0 in-flight for 500ms). Return a clear timeout error naming the unmet
 condition. Model semantics on Playwright's actionability.
 **Tests:** `data:` page with a delayed element; assert `--selector` waits and succeeds, `--gone` waits for
 removal, timeouts return the named-condition error. **Acceptance:** each condition works + clean timeouts.
-**Evidence:** _test run_
+**Evidence:** `go test ./internal/daemon -run 'TestR1' -v -count=1` -> `PASS ok bxw/internal/daemon 9.163s`; full `go test ./...` green; `go vet` clean; `GOOS=linux go build ./...` green.
 
 ## R2 — Auto-reconnect / self-heal daemon
 **Status:** ⬜ · **Why:** survive a transient CDP drop / browser restart without the agent seeing a hard failure.

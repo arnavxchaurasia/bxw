@@ -149,6 +149,13 @@ func (sess *tabSession) startDebugCapture(ctx context.Context) {
 			if err != nil {
 				return
 			}
+			sess.netMu.Lock()
+			if sess.inFlightReqs == nil {
+				sess.inFlightReqs = make(map[network.RequestID]time.Time)
+			}
+			sess.inFlightReqs[ev.RequestID] = time.Now()
+			sess.netMu.Unlock()
+
 			pendingNetMu.Lock()
 			rec := map[string]any{
 				"id":         string(ev.RequestID),
@@ -193,6 +200,10 @@ func (sess *tabSession) startDebugCapture(ctx context.Context) {
 			if err != nil {
 				return
 			}
+			sess.netMu.Lock()
+			delete(sess.inFlightReqs, ev.RequestID)
+			sess.netMu.Unlock()
+
 			pendingNetMu.Lock()
 			rec, ok := pendingNet[ev.RequestID]
 			if ok {
@@ -212,6 +223,10 @@ func (sess *tabSession) startDebugCapture(ctx context.Context) {
 			if err != nil {
 				return
 			}
+			sess.netMu.Lock()
+			delete(sess.inFlightReqs, ev.RequestID)
+			sess.netMu.Unlock()
+
 			pendingNetMu.Lock()
 			rec, ok := pendingNet[ev.RequestID]
 			if ok {
@@ -226,6 +241,16 @@ func (sess *tabSession) startDebugCapture(ctx context.Context) {
 			pendingNetMu.Unlock()
 		}
 	}()
+}
+
+// inFlightCount returns the current number of in-flight network requests.
+func (sess *tabSession) inFlightCount() int {
+	if sess == nil {
+		return 0
+	}
+	sess.netMu.Lock()
+	defer sess.netMu.Unlock()
+	return len(sess.inFlightReqs)
 }
 
 func (d *Daemon) console(tabID, level string, limit int) ([]map[string]any, error) {
