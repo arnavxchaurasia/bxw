@@ -353,7 +353,7 @@ masking, driven by a documented pattern set. Route every result serializer throu
 unit-testable and easy to extend. Default-on; opt-out gated by `perms`.
 **Tests:** table test over known secret strings (masked) vs benign text (untouched); integration asserting a
 snapshot of a filled password field and a storage dump with a JWT come back masked. **Acceptance:** secrets
-masked by default across all surfaces. **Evidence:** `go test ./internal/redact ./internal/daemon -run 'TestS1' -v -count=1` -> `PASS ok bxw/internal/redact 0.710s`, `PASS ok bxw/internal/daemon 8.009s`; full `go test ./...` green; `go vet` clean; `GOOS=linux go build ./...` green.
+masked by default across all surfaces. **Evidence:** commit `5f8b6a1`; `go test ./internal/redact ./internal/daemon -run 'TestS1' -v -count=1` -> `PASS ok bxw/internal/redact 1.622s`, `PASS ok bxw/internal/daemon 6.368s`; full `go test ./...` green; `go vet` clean; `GOOS=linux go build ./...` green; CI run `45774493289` green.
 
 ## S2 — Read-only mode
 **Status:** ⬜ · **Why:** a safe research/browsing agent that physically cannot mutate. bx can't promise this.
