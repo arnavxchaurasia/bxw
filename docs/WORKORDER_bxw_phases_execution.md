@@ -7,7 +7,7 @@ them in and the dependencies between them.** Do not re-spec here — follow the 
 
 **Done already (do not rebuild):** F1 stable semantic refs ✅, F2 durable session state model ✅ (Phase 0).
 **C1 ranked retrieval / query API ✅** (Phase 1 #1) — commit `fc79f60`, verified: CI green (ubuntu + windows),
-`verify-roadmap` OK, real headless-browser integration test. **Next up: C2.**
+`verify-roadmap` OK, real headless-browser integration test. **Phase 1 (C1–C5) complete ✅ — next up: R1 (Phase 2).**
 
 ## Rules (same as the roadmap — enforced)
 
@@ -40,8 +40,8 @@ also bxw's strongest trust differentiator over bx — consider pulling it forwar
 ## Recommended build order (critical path)
 
 1. ✅ **C1** — ranked retrieval — **DONE** (`fc79f60`, CI green, verify-roadmap OK)
-2. **C2 · C3 · C4** — context/token-efficiency (C3 needs C1; C4 needs F2 ✅; parallelizable after C1)
-3. **C5** — episodic recall + close-out (needs C1)
+2. ✅ **C2 · C3 · C4** — context/token-efficiency — **DONE**
+3. ✅ **C5** — episodic recall + close-out — **DONE** (Phase 1 complete)
 4. **R1** — smart wait conditions (needed by X1)
 5. **S1** ★ — redaction (gate for Phase 5 + X3; the trust feature — do it before any DevTools work)
 6. **S2** — read-only mode (gate for Phase 5 mutations)
@@ -101,6 +101,6 @@ also bxw's strongest trust differentiator over bx — consider pulling it forwar
 
 ## Next action for the implementation model
 
-C1, C2, C3, and C4 are ✅ (`verify-roadmap` OK, tests green).
+C1–C5 are ✅ (`verify-roadmap` OK, tests green) — **Phase 1 is complete.**
 Resume per the roadmap's anti-drift §1 (`git log`, `go test ./...`, `scripts/verify-roadmap.sh` — reality wins over the dashboard),
-then start **C5** (WIP = 1) — episodic recall + close-out distillation.
+then start **R1** (WIP = 1) — smart wait conditions (Phase 2; needed by X1).

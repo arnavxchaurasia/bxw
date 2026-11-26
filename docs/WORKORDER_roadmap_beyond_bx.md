@@ -97,7 +97,7 @@ If §1 shows drift (dashboard ahead of git/tests), your first commit of the sess
 | C2 | Semantic action deltas | 1 Context | ✅ | ✅ | ✅ | ✅ | ✅ |
 | C3 | Token-budgeted / progressive snapshots | 1 Context | ✅ | ✅ | ✅ | ✅ | ✅ |
 | C4 | Region memoization (stable-region caching) | 1 Context | ✅ | ✅ | ✅ | ✅ | ✅ |
-| C5 | Episodic recall (queryable session memory) | 1 Context | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
+| C5 | Episodic recall (queryable session memory) | 1 Context | ✅ | ✅ | ✅ | ✅ | ✅ |
 | R1 | Smart wait conditions (auto-waiting) | 2 Reliability | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
 | R2 | Auto-reconnect / self-heal daemon | 2 Reliability | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
 | S1 | Secret / PII redaction layer | 3 Safety | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
